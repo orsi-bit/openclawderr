@@ -20,6 +20,8 @@ var (
 	setupOpencode   bool
 	setupCodex      bool
 	setupGemini     bool
+	setupCursor     bool
+	setupWindsurf   bool
 	setupAllowAll   bool
 	setupSkipClaude bool
 )
@@ -35,7 +37,9 @@ Supported tools:
   --project   Claude Code project config (.mcp.json)
   --opencode  OpenCode (opencode.json)
   --codex     OpenAI Codex CLI (~/.codex/config.toml)
-  --gemini    Google Gemini CLI (~/.gemini/settings.json)`,
+  --gemini    Google Gemini CLI (~/.gemini/settings.json)
+  --cursor    Cursor editor (~/.cursor/mcp.json)
+  --windsurf  Windsurf editor (~/.codeium/windsurf/mcp_config.json)`,
 	RunE: runSetup,
 }
 
@@ -45,6 +49,8 @@ func init() {
 	setupCmd.Flags().BoolVarP(&setupOpencode, "opencode", "o", false, "Add to OpenCode config (opencode.json)")
 	setupCmd.Flags().BoolVar(&setupCodex, "codex", false, "Add to OpenAI Codex config (~/.codex/config.toml)")
 	setupCmd.Flags().BoolVar(&setupGemini, "gemini", false, "Add to Google Gemini CLI config (~/.gemini/settings.json)")
+	setupCmd.Flags().BoolVar(&setupCursor, "cursor", false, "Add to Cursor editor config (~/.cursor/mcp.json)")
+	setupCmd.Flags().BoolVar(&setupWindsurf, "windsurf", false, "Add to Windsurf editor config (~/.codeium/windsurf/mcp_config.json)")
 	setupCmd.Flags().BoolVarP(&setupAllowAll, "allow-all", "a", false, "Pre-approve all clauder commands (no permission prompts)")
 	setupCmd.Flags().BoolVar(&setupSkipClaude, "skip-claude-md", false, "Skip adding instructions to CLAUDE.md")
 }
@@ -72,7 +78,7 @@ func runSetup(cmd *cobra.Command, args []string) error {
 	}
 
 	// Determine which config file to use
-	if !setupGlobal && !setupProject && !setupOpencode && !setupCodex && !setupGemini {
+	if !setupGlobal && !setupProject && !setupOpencode && !setupCodex && !setupGemini && !setupCursor && !setupWindsurf {
 		// Default to global
 		setupGlobal = true
 	}
@@ -89,6 +95,14 @@ func runSetup(cmd *cobra.Command, args []string) error {
 	if setupGemini {
 		telemetry.TrackSetup("gemini")
 		return setupGeminiConfig(binaryPath)
+	}
+	if setupCursor {
+		telemetry.TrackSetup("cursor")
+		return setupCursorConfig(binaryPath)
+	}
+	if setupWindsurf {
+		telemetry.TrackSetup("windsurf")
+		return setupWindsurfConfig(binaryPath)
 	}
 
 	// Ask about pre-approving commands if not specified via flag
@@ -393,6 +407,112 @@ func setupGeminiConfig(binaryPath string) error {
 	fmt.Printf("Added clauder to %s\n", configPath)
 	fmt.Printf("Binary: %s\n", binaryPath)
 	fmt.Println("\nRestart Gemini CLI to load the new MCP server.")
+	return nil
+}
+
+func setupCursorConfig(binaryPath string) error {
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return fmt.Errorf("failed to get home directory: %w", err)
+	}
+
+	configDir := filepath.Join(home, ".cursor")
+	configPath := filepath.Join(configDir, "mcp.json")
+
+	// Create .cursor directory if it doesn't exist
+	if err := os.MkdirAll(configDir, 0755); err != nil {
+		return fmt.Errorf("failed to create config directory: %w", err)
+	}
+
+	// Read existing config or create new one
+	config := MCPConfig{
+		McpServers: make(map[string]MCPServer),
+	}
+
+	data, err := os.ReadFile(configPath)
+	if err == nil {
+		if err := json.Unmarshal(data, &config); err != nil {
+			return fmt.Errorf("failed to parse existing config: %w", err)
+		}
+		if config.McpServers == nil {
+			config.McpServers = make(map[string]MCPServer)
+		}
+	} else if !os.IsNotExist(err) {
+		return fmt.Errorf("failed to read config: %w", err)
+	}
+
+	// Add clauder
+	config.McpServers["clauder"] = MCPServer{
+		Command: binaryPath,
+		Args:    []string{"serve"},
+	}
+
+	// Write back with pretty formatting
+	output, err := json.MarshalIndent(config, "", "  ")
+	if err != nil {
+		return fmt.Errorf("failed to marshal config: %w", err)
+	}
+
+	if err := os.WriteFile(configPath, output, 0644); err != nil {
+		return fmt.Errorf("failed to write config: %w", err)
+	}
+
+	fmt.Printf("Added clauder to %s\n", configPath)
+	fmt.Printf("Binary: %s\n", binaryPath)
+	fmt.Println("\nRestart Cursor to load the new MCP server.")
+	return nil
+}
+
+func setupWindsurfConfig(binaryPath string) error {
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return fmt.Errorf("failed to get home directory: %w", err)
+	}
+
+	configDir := filepath.Join(home, ".codeium", "windsurf")
+	configPath := filepath.Join(configDir, "mcp_config.json")
+
+	// Create .codeium/windsurf directory if it doesn't exist
+	if err := os.MkdirAll(configDir, 0755); err != nil {
+		return fmt.Errorf("failed to create config directory: %w", err)
+	}
+
+	// Read existing config or create new one
+	config := MCPConfig{
+		McpServers: make(map[string]MCPServer),
+	}
+
+	data, err := os.ReadFile(configPath)
+	if err == nil {
+		if err := json.Unmarshal(data, &config); err != nil {
+			return fmt.Errorf("failed to parse existing config: %w", err)
+		}
+		if config.McpServers == nil {
+			config.McpServers = make(map[string]MCPServer)
+		}
+	} else if !os.IsNotExist(err) {
+		return fmt.Errorf("failed to read config: %w", err)
+	}
+
+	// Add clauder
+	config.McpServers["clauder"] = MCPServer{
+		Command: binaryPath,
+		Args:    []string{"serve"},
+	}
+
+	// Write back with pretty formatting
+	output, err := json.MarshalIndent(config, "", "  ")
+	if err != nil {
+		return fmt.Errorf("failed to marshal config: %w", err)
+	}
+
+	if err := os.WriteFile(configPath, output, 0644); err != nil {
+		return fmt.Errorf("failed to write config: %w", err)
+	}
+
+	fmt.Printf("Added clauder to %s\n", configPath)
+	fmt.Printf("Binary: %s\n", binaryPath)
+	fmt.Println("\nRestart Windsurf to load the new MCP server.")
 	return nil
 }
 

@@ -871,3 +871,267 @@ func TestSetupProjectConfig_InvalidJSON(t *testing.T) {
 		t.Errorf("unexpected error: %v", err)
 	}
 }
+
+// Cursor Config Tests
+
+func TestSetupCursorConfig_NewFile(t *testing.T) {
+	tmpHome, cleanup := setupTempHome(t)
+	defer cleanup()
+
+	restoreHome := setTestHome(t, tmpHome)
+	defer restoreHome()
+
+	binaryPath := "/usr/local/bin/clauder"
+
+	err := setupCursorConfig(binaryPath)
+	if err != nil {
+		t.Fatalf("setupCursorConfig failed: %v", err)
+	}
+
+	configPath := filepath.Join(tmpHome, ".cursor", "mcp.json")
+	data, err := os.ReadFile(configPath)
+	if err != nil {
+		t.Fatalf("failed to read config: %v", err)
+	}
+
+	var config MCPConfig
+	if err := json.Unmarshal(data, &config); err != nil {
+		t.Fatalf("failed to parse config: %v", err)
+	}
+
+	clauder, ok := config.McpServers["clauder"]
+	if !ok {
+		t.Fatal("expected clauder in mcpServers")
+	}
+
+	if clauder.Command != binaryPath {
+		t.Errorf("expected command %s, got %s", binaryPath, clauder.Command)
+	}
+
+	if len(clauder.Args) != 1 || clauder.Args[0] != "serve" {
+		t.Errorf("expected args [serve], got %v", clauder.Args)
+	}
+}
+
+func TestSetupCursorConfig_CreatesDirectory(t *testing.T) {
+	tmpHome, cleanup := setupTempHome(t)
+	defer cleanup()
+
+	restoreHome := setTestHome(t, tmpHome)
+	defer restoreHome()
+
+	cursorDir := filepath.Join(tmpHome, ".cursor")
+	if _, err := os.Stat(cursorDir); !os.IsNotExist(err) {
+		t.Fatal("expected .cursor directory to not exist initially")
+	}
+
+	err := setupCursorConfig("/usr/local/bin/clauder")
+	if err != nil {
+		t.Fatalf("setupCursorConfig failed: %v", err)
+	}
+
+	if _, err := os.Stat(cursorDir); os.IsNotExist(err) {
+		t.Error("expected .cursor directory to be created")
+	}
+}
+
+func TestSetupCursorConfig_MergeExisting(t *testing.T) {
+	tmpHome, cleanup := setupTempHome(t)
+	defer cleanup()
+
+	restoreHome := setTestHome(t, tmpHome)
+	defer restoreHome()
+
+	// Create existing config
+	cursorDir := filepath.Join(tmpHome, ".cursor")
+	mkdirTest(t, cursorDir)
+	configPath := filepath.Join(cursorDir, "mcp.json")
+
+	existingConfig := MCPConfig{
+		McpServers: map[string]MCPServer{
+			"existingServer": {
+				Command: "existing",
+				Args:    []string{"arg1"},
+			},
+		},
+	}
+	data, _ := json.MarshalIndent(existingConfig, "", "  ")
+	writeTestFile(t, configPath, data)
+
+	binaryPath := "/usr/local/bin/clauder"
+
+	err := setupCursorConfig(binaryPath)
+	if err != nil {
+		t.Fatalf("setupCursorConfig failed: %v", err)
+	}
+
+	data, err = os.ReadFile(configPath)
+	if err != nil {
+		t.Fatalf("failed to read config: %v", err)
+	}
+	var config MCPConfig
+	if err := json.Unmarshal(data, &config); err != nil {
+		t.Fatalf("failed to parse config: %v", err)
+	}
+
+	if _, ok := config.McpServers["existingServer"]; !ok {
+		t.Error("expected existingServer to be preserved")
+	}
+	if _, ok := config.McpServers["clauder"]; !ok {
+		t.Error("expected clauder to be added")
+	}
+}
+
+func TestSetupCursorConfig_InvalidJSON(t *testing.T) {
+	tmpHome, cleanup := setupTempHome(t)
+	defer cleanup()
+
+	restoreHome := setTestHome(t, tmpHome)
+	defer restoreHome()
+
+	// Create invalid JSON config
+	cursorDir := filepath.Join(tmpHome, ".cursor")
+	mkdirTest(t, cursorDir)
+	configPath := filepath.Join(cursorDir, "mcp.json")
+	writeTestFile(t, configPath, []byte("invalid json }"))
+
+	err := setupCursorConfig("/usr/local/bin/clauder")
+	if err == nil {
+		t.Error("expected error for invalid JSON")
+	}
+	if !strings.Contains(err.Error(), "failed to parse") {
+		t.Errorf("unexpected error: %v", err)
+	}
+}
+
+// Windsurf Config Tests
+
+func TestSetupWindsurfConfig_NewFile(t *testing.T) {
+	tmpHome, cleanup := setupTempHome(t)
+	defer cleanup()
+
+	restoreHome := setTestHome(t, tmpHome)
+	defer restoreHome()
+
+	binaryPath := "/usr/local/bin/clauder"
+
+	err := setupWindsurfConfig(binaryPath)
+	if err != nil {
+		t.Fatalf("setupWindsurfConfig failed: %v", err)
+	}
+
+	configPath := filepath.Join(tmpHome, ".codeium", "windsurf", "mcp_config.json")
+	data, err := os.ReadFile(configPath)
+	if err != nil {
+		t.Fatalf("failed to read config: %v", err)
+	}
+
+	var config MCPConfig
+	if err := json.Unmarshal(data, &config); err != nil {
+		t.Fatalf("failed to parse config: %v", err)
+	}
+
+	clauder, ok := config.McpServers["clauder"]
+	if !ok {
+		t.Fatal("expected clauder in mcpServers")
+	}
+
+	if clauder.Command != binaryPath {
+		t.Errorf("expected command %s, got %s", binaryPath, clauder.Command)
+	}
+
+	if len(clauder.Args) != 1 || clauder.Args[0] != "serve" {
+		t.Errorf("expected args [serve], got %v", clauder.Args)
+	}
+}
+
+func TestSetupWindsurfConfig_CreatesDirectory(t *testing.T) {
+	tmpHome, cleanup := setupTempHome(t)
+	defer cleanup()
+
+	restoreHome := setTestHome(t, tmpHome)
+	defer restoreHome()
+
+	windsurfDir := filepath.Join(tmpHome, ".codeium", "windsurf")
+	if _, err := os.Stat(windsurfDir); !os.IsNotExist(err) {
+		t.Fatal("expected .codeium/windsurf directory to not exist initially")
+	}
+
+	err := setupWindsurfConfig("/usr/local/bin/clauder")
+	if err != nil {
+		t.Fatalf("setupWindsurfConfig failed: %v", err)
+	}
+
+	if _, err := os.Stat(windsurfDir); os.IsNotExist(err) {
+		t.Error("expected .codeium/windsurf directory to be created")
+	}
+}
+
+func TestSetupWindsurfConfig_MergeExisting(t *testing.T) {
+	tmpHome, cleanup := setupTempHome(t)
+	defer cleanup()
+
+	restoreHome := setTestHome(t, tmpHome)
+	defer restoreHome()
+
+	// Create existing config
+	windsurfDir := filepath.Join(tmpHome, ".codeium", "windsurf")
+	mkdirTest(t, windsurfDir)
+	configPath := filepath.Join(windsurfDir, "mcp_config.json")
+
+	existingConfig := MCPConfig{
+		McpServers: map[string]MCPServer{
+			"existingServer": {
+				Command: "existing",
+				Args:    []string{"arg1"},
+			},
+		},
+	}
+	data, _ := json.MarshalIndent(existingConfig, "", "  ")
+	writeTestFile(t, configPath, data)
+
+	binaryPath := "/usr/local/bin/clauder"
+
+	err := setupWindsurfConfig(binaryPath)
+	if err != nil {
+		t.Fatalf("setupWindsurfConfig failed: %v", err)
+	}
+
+	data, err = os.ReadFile(configPath)
+	if err != nil {
+		t.Fatalf("failed to read config: %v", err)
+	}
+	var config MCPConfig
+	if err := json.Unmarshal(data, &config); err != nil {
+		t.Fatalf("failed to parse config: %v", err)
+	}
+
+	if _, ok := config.McpServers["existingServer"]; !ok {
+		t.Error("expected existingServer to be preserved")
+	}
+	if _, ok := config.McpServers["clauder"]; !ok {
+		t.Error("expected clauder to be added")
+	}
+}
+
+func TestSetupWindsurfConfig_InvalidJSON(t *testing.T) {
+	tmpHome, cleanup := setupTempHome(t)
+	defer cleanup()
+
+	restoreHome := setTestHome(t, tmpHome)
+	defer restoreHome()
+
+	// Create invalid JSON config
+	windsurfDir := filepath.Join(tmpHome, ".codeium", "windsurf")
+	mkdirTest(t, windsurfDir)
+	configPath := filepath.Join(windsurfDir, "mcp_config.json")
+	writeTestFile(t, configPath, []byte("invalid json }"))
+
+	err := setupWindsurfConfig("/usr/local/bin/clauder")
+	if err == nil {
+		t.Error("expected error for invalid JSON")
+	}
+	if !strings.Contains(err.Error(), "failed to parse") {
+		t.Errorf("unexpected error: %v", err)
+	}
+}
