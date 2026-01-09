@@ -50,11 +50,13 @@ func (s *SQLiteStore) migrate() error {
 		tags TEXT DEFAULT '[]',
 		source_dir TEXT NOT NULL,
 		created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-		updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+		updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+		deleted_at DATETIME
 	);
 
 	CREATE INDEX IF NOT EXISTS idx_facts_source_dir ON facts(source_dir);
 	CREATE INDEX IF NOT EXISTS idx_facts_created_at ON facts(created_at);
+	CREATE INDEX IF NOT EXISTS idx_facts_deleted_at ON facts(deleted_at);
 
 	CREATE VIRTUAL TABLE IF NOT EXISTS facts_fts USING fts5(content, content=facts, content_rowid=id);
 
@@ -93,7 +95,14 @@ func (s *SQLiteStore) migrate() error {
 	`
 
 	_, err := s.db.Exec(schema)
-	return err
+	if err != nil {
+		return err
+	}
+
+	// Migration: Add deleted_at column if it doesn't exist (for existing databases)
+	_, _ = s.db.Exec("ALTER TABLE facts ADD COLUMN deleted_at DATETIME")
+
+	return nil
 }
 
 // sanitizeFTSQuery escapes special FTS5 operators to prevent query injection
@@ -142,6 +151,9 @@ func (s *SQLiteStore) AddFact(content string, tags []string, sourceDir string) (
 func (s *SQLiteStore) GetFacts(query string, tags []string, sourceDir string, limit int) ([]Fact, error) {
 	var args []interface{}
 	var conditions []string
+
+	// Always exclude soft-deleted facts
+	conditions = append(conditions, "f.deleted_at IS NULL")
 
 	baseQuery := "SELECT f.id, f.content, f.tags, f.source_dir, f.created_at, f.updated_at FROM facts f"
 
@@ -210,7 +222,7 @@ func (s *SQLiteStore) GetFactByID(id int64) (*Fact, error) {
 	var f Fact
 	var tagsJSON string
 	err := s.db.QueryRow(
-		"SELECT id, content, tags, source_dir, created_at, updated_at FROM facts WHERE id = ?",
+		"SELECT id, content, tags, source_dir, created_at, updated_at FROM facts WHERE id = ? AND deleted_at IS NULL",
 		id,
 	).Scan(&f.ID, &f.Content, &tagsJSON, &f.SourceDir, &f.CreatedAt, &f.UpdatedAt)
 	if err == sql.ErrNoRows {
@@ -228,6 +240,11 @@ func (s *SQLiteStore) GetFactByID(id int64) (*Fact, error) {
 
 func (s *SQLiteStore) DeleteFact(id int64) error {
 	_, err := s.db.Exec("DELETE FROM facts WHERE id = ?", id)
+	return err
+}
+
+func (s *SQLiteStore) SoftDeleteFact(id int64) error {
+	_, err := s.db.Exec("UPDATE facts SET deleted_at = ? WHERE id = ? AND deleted_at IS NULL", time.Now(), id)
 	return err
 }
 

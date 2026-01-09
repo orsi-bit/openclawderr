@@ -5,12 +5,13 @@ import (
 )
 
 type Fact struct {
-	ID        int64     `json:"id"`
-	Content   string    `json:"content"`
-	Tags      []string  `json:"tags,omitempty"`
-	SourceDir string    `json:"source_dir"`
-	CreatedAt time.Time `json:"created_at"`
-	UpdatedAt time.Time `json:"updated_at"`
+	ID        int64      `json:"id"`
+	Content   string     `json:"content"`
+	Tags      []string   `json:"tags,omitempty"`
+	SourceDir string     `json:"source_dir"`
+	CreatedAt time.Time  `json:"created_at"`
+	UpdatedAt time.Time  `json:"updated_at"`
+	DeletedAt *time.Time `json:"deleted_at,omitempty"`
 }
 
 type Instance struct {
@@ -36,6 +37,7 @@ type Store interface {
 	GetFacts(query string, tags []string, sourceDir string, limit int) ([]Fact, error)
 	GetFactByID(id int64) (*Fact, error)
 	DeleteFact(id int64) error
+	SoftDeleteFact(id int64) error
 
 	// Instances
 	RegisterInstance(id string, pid int, directory string) error

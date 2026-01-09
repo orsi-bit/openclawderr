@@ -50,6 +50,58 @@ func (s *Server) toolRemember(args map[string]interface{}) ToolResult {
 	return textResult(fmt.Sprintf("Stored fact #%d: %s", stored.ID, truncate(fact, 100)))
 }
 
+func (s *Server) toolForget(args map[string]interface{}) ToolResult {
+	telemetry.TrackMCPTool("forget")
+
+	// Get and validate the fact ID
+	idFloat, ok := args["id"].(float64)
+	if !ok {
+		return errorResult("'id' is required and must be a number")
+	}
+	id := int64(idFloat)
+
+	// Check if user has confirmed the deletion
+	confirm, _ := args["confirm"].(bool)
+	if !confirm {
+		// Fetch the fact to show what would be deleted
+		fact, err := s.store.GetFactByID(id)
+		if err != nil {
+			return errorResult(fmt.Sprintf("failed to retrieve fact: %v", err))
+		}
+		if fact == nil {
+			return errorResult(fmt.Sprintf("fact #%d not found", id))
+		}
+
+		// Return the fact details and ask for confirmation
+		var sb strings.Builder
+		sb.WriteString(fmt.Sprintf("**Fact #%d to be deleted:**\n\n", fact.ID))
+		sb.WriteString(fmt.Sprintf("Content: %s\n", fact.Content))
+		if len(fact.Tags) > 0 {
+			sb.WriteString(fmt.Sprintf("Tags: %s\n", strings.Join(fact.Tags, ", ")))
+		}
+		sb.WriteString(fmt.Sprintf("Directory: %s\n", fact.SourceDir))
+		sb.WriteString(fmt.Sprintf("Created: %s\n\n", fact.CreatedAt.Format("2006-01-02 15:04")))
+		sb.WriteString("⚠️ To confirm deletion, call forget again with confirm=true")
+		return textResult(sb.String())
+	}
+
+	// Fetch the fact first to verify it exists
+	fact, err := s.store.GetFactByID(id)
+	if err != nil {
+		return errorResult(fmt.Sprintf("failed to retrieve fact: %v", err))
+	}
+	if fact == nil {
+		return errorResult(fmt.Sprintf("fact #%d not found", id))
+	}
+
+	// Perform soft delete
+	if err := s.store.SoftDeleteFact(id); err != nil {
+		return errorResult(fmt.Sprintf("failed to delete fact: %v", err))
+	}
+
+	return textResult(fmt.Sprintf("Deleted fact #%d: %s", id, truncate(fact.Content, 100)))
+}
+
 func (s *Server) toolRecall(args map[string]interface{}) ToolResult {
 	telemetry.TrackMCPTool("recall")
 	query, _ := args["query"].(string)

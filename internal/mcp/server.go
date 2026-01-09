@@ -223,6 +223,24 @@ func (s *Server) handleToolsList(req *Request) {
 			},
 		},
 		{
+			Name:        "forget",
+			Description: "Delete a stored fact by ID. Requires user confirmation. First call without confirm to see the fact details, then call again with confirm=true to delete.",
+			InputSchema: InputSchema{
+				Type: "object",
+				Properties: map[string]Property{
+					"id": {
+						Type:        "integer",
+						Description: "The ID of the fact to delete (get this from recall results)",
+					},
+					"confirm": {
+						Type:        "boolean",
+						Description: "Set to true to confirm the deletion. If false or omitted, shows the fact details for confirmation.",
+					},
+				},
+				Required: []string{"id"},
+			},
+		},
+		{
 			Name:        "get_context",
 			Description: "Get all relevant context for the current working directory. Call this at the start of a session to load persistent context.",
 			InputSchema: InputSchema{
@@ -289,6 +307,8 @@ func (s *Server) handleToolCall(req *Request) {
 		result = s.toolRemember(params.Arguments)
 	case "recall":
 		result = s.toolRecall(params.Arguments)
+	case "forget":
+		result = s.toolForget(params.Arguments)
 	case "get_context":
 		result = s.toolGetContext(params.Arguments)
 	case "list_instances":
