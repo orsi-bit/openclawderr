@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"syscall"
 	"time"
 
 	"github.com/blevesearch/bleve/v2"
@@ -98,21 +99,12 @@ func (s *SQLiteStore) InitIndex(instanceID string) error {
 	return nil
 }
 
-// cleanupStaleIndexes removes index directories for instances that are no longer running
+// cleanupStaleIndexes removes index directories for processes that are no longer running
 func (s *SQLiteStore) cleanupStaleIndexes() {
 	indexDir := filepath.Join(s.dataDir, "indexes")
 	entries, err := os.ReadDir(indexDir)
 	if err != nil {
 		return // Directory might not exist yet
-	}
-
-	// Get list of active instance IDs
-	activeInstances := make(map[string]bool)
-	instances, err := s.GetInstances()
-	if err == nil {
-		for _, inst := range instances {
-			activeInstances[inst.ID] = true
-		}
 	}
 
 	for _, entry := range entries {
@@ -123,17 +115,37 @@ func (s *SQLiteStore) cleanupStaleIndexes() {
 		if !strings.HasSuffix(name, ".bleve") {
 			continue
 		}
-		instanceID := strings.TrimSuffix(name, ".bleve")
+		pidStr := strings.TrimSuffix(name, ".bleve")
 
-		// Keep indexes for active instances
-		if activeInstances[instanceID] {
+		// Try to parse as PID
+		pid, err := strconv.Atoi(pidStr)
+		if err != nil {
+			// Not a PID-based index (maybe old format), remove it
+			indexPath := filepath.Join(indexDir, name)
+			_ = os.RemoveAll(indexPath)
 			continue
 		}
 
-		// Remove stale index
+		// Check if process is still running
+		if isProcessRunning(pid) {
+			continue
+		}
+
+		// Process is dead, remove stale index
 		indexPath := filepath.Join(indexDir, name)
 		_ = os.RemoveAll(indexPath)
 	}
+}
+
+// isProcessRunning checks if a process with the given PID is still running
+func isProcessRunning(pid int) bool {
+	process, err := os.FindProcess(pid)
+	if err != nil {
+		return false
+	}
+	// On Unix, FindProcess always succeeds. Send signal 0 to check if process exists.
+	err = process.Signal(syscall.Signal(0))
+	return err == nil
 }
 
 // CleanupIndex removes this instance's Bleve index. Call on shutdown for CLI commands.
