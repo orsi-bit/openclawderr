@@ -43,10 +43,15 @@ func runServe(cmd *cobra.Command, args []string) error {
 	// This prevents file locking issues when multiple processes run in the same directory
 	indexID := fmt.Sprintf("%d", os.Getpid())
 
+	fmt.Fprintf(os.Stderr, "[clauder] PID=%d starting, workDir=%s, indexID=%s\n", os.Getpid(), workDir, indexID)
+
 	// Initialize per-process Bleve index for full-text search
+	fmt.Fprintf(os.Stderr, "[clauder] Initializing Bleve index...\n")
 	if err := s.InitIndex(indexID); err != nil {
 		// Log warning but continue - search will fall back to SQLite
-		fmt.Fprintf(os.Stderr, "warning: failed to initialize search index: %v\n", err)
+		fmt.Fprintf(os.Stderr, "[clauder] WARNING: failed to initialize search index: %v\n", err)
+	} else {
+		fmt.Fprintf(os.Stderr, "[clauder] Bleve index initialized successfully\n")
 	}
 
 	// Register this instance

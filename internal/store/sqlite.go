@@ -35,21 +35,26 @@ type FactDocument struct {
 }
 
 func NewSQLiteStore(dataDir string) (*SQLiteStore, error) {
+	debugLog("[NewSQLiteStore] Creating data directory: %s", dataDir)
 	if err := os.MkdirAll(dataDir, 0755); err != nil {
 		return nil, fmt.Errorf("failed to create data directory: %w", err)
 	}
 
 	dbPath := filepath.Join(dataDir, "clauder.db")
+	debugLog("[NewSQLiteStore] Opening database: %s", dbPath)
 	db, err := sql.Open("sqlite", dbPath+"?_journal_mode=WAL&_busy_timeout=5000")
 	if err != nil {
 		return nil, fmt.Errorf("failed to open database: %w", err)
 	}
+	debugLog("[NewSQLiteStore] Database opened successfully")
 
 	store := &SQLiteStore{db: db, dataDir: dataDir}
+	debugLog("[NewSQLiteStore] Running migrations...")
 	if err := store.migrate(); err != nil {
 		_ = db.Close()
 		return nil, fmt.Errorf("failed to migrate database: %w", err)
 	}
+	debugLog("[NewSQLiteStore] Migrations complete")
 
 	return store, nil
 }
@@ -60,43 +65,59 @@ func NewSQLiteStore(dataDir string) (*SQLiteStore, error) {
 // Short-lived CLI commands can skip this and use SQLite-only search.
 func (s *SQLiteStore) InitIndex(instanceID string) error {
 	s.instanceID = instanceID
+	debugLog("[InitIndex] Starting for instanceID=%s", instanceID)
 
 	// Clean up old shared index from previous versions (pre-v0.6.0)
 	// This prevents the old facts.bleve from being left behind
 	oldIndexPath := filepath.Join(s.dataDir, "facts.bleve")
+	debugLog("[InitIndex] Removing old shared index at %s", oldIndexPath)
 	_ = os.RemoveAll(oldIndexPath)
 
 	// Clean up stale indexes from dead processes first
+	debugLog("[InitIndex] Cleaning up stale indexes...")
 	s.cleanupStaleIndexes()
+	debugLog("[InitIndex] Stale index cleanup complete")
 
 	// Create indexes directory
 	indexDir := filepath.Join(s.dataDir, "indexes")
+	debugLog("[InitIndex] Creating index directory: %s", indexDir)
 	if err := os.MkdirAll(indexDir, 0755); err != nil {
 		return fmt.Errorf("failed to create index directory: %w", err)
 	}
 
 	// Use instance-specific index path
 	indexPath := filepath.Join(indexDir, instanceID+".bleve")
+	debugLog("[InitIndex] Index path: %s", indexPath)
 
 	// Always start fresh - delete existing index for this instance
 	// This ensures clean state and avoids corruption issues
+	debugLog("[InitIndex] Removing existing index...")
 	_ = os.RemoveAll(indexPath)
 
+	debugLog("[InitIndex] Creating new Bleve index...")
 	index, err := createIndex(indexPath)
 	if err != nil {
 		return fmt.Errorf("failed to create search index: %w", err)
 	}
+	debugLog("[InitIndex] Bleve index created successfully")
 
 	s.index = index
 
 	// Index all existing facts
+	debugLog("[InitIndex] Reindexing all facts...")
 	if err := s.reindexAllFacts(); err != nil {
 		_ = index.Close()
 		s.index = nil
 		return fmt.Errorf("failed to index facts: %w", err)
 	}
+	debugLog("[InitIndex] Reindexing complete")
 
 	return nil
+}
+
+// debugLog writes debug output to stderr
+func debugLog(format string, args ...any) {
+	fmt.Fprintf(os.Stderr, "[clauder] "+format+"\n", args...)
 }
 
 // cleanupStaleIndexes removes index directories for processes that are no longer running
@@ -104,9 +125,11 @@ func (s *SQLiteStore) cleanupStaleIndexes() {
 	indexDir := filepath.Join(s.dataDir, "indexes")
 	entries, err := os.ReadDir(indexDir)
 	if err != nil {
+		debugLog("[cleanupStaleIndexes] Cannot read index dir: %v", err)
 		return // Directory might not exist yet
 	}
 
+	debugLog("[cleanupStaleIndexes] Found %d entries in index dir", len(entries))
 	for _, entry := range entries {
 		if !entry.IsDir() {
 			continue
@@ -121,17 +144,21 @@ func (s *SQLiteStore) cleanupStaleIndexes() {
 		pid, err := strconv.Atoi(pidStr)
 		if err != nil {
 			// Not a PID-based index (maybe old format), remove it
+			debugLog("[cleanupStaleIndexes] Removing non-PID index: %s", name)
 			indexPath := filepath.Join(indexDir, name)
 			_ = os.RemoveAll(indexPath)
 			continue
 		}
 
 		// Check if process is still running
+		debugLog("[cleanupStaleIndexes] Checking if PID %d is running...", pid)
 		if isProcessRunning(pid) {
+			debugLog("[cleanupStaleIndexes] PID %d is running, keeping index", pid)
 			continue
 		}
 
 		// Process is dead, remove stale index
+		debugLog("[cleanupStaleIndexes] PID %d is dead, removing index", pid)
 		indexPath := filepath.Join(indexDir, name)
 		_ = os.RemoveAll(indexPath)
 	}
@@ -186,12 +213,14 @@ func createIndex(indexPath string) (bleve.Index, error) {
 
 // reindexAllFacts indexes all existing facts into Bleve
 func (s *SQLiteStore) reindexAllFacts() error {
+	debugLog("[reindexAllFacts] Querying facts from SQLite...")
 	rows, err := s.db.Query("SELECT id, content, source_dir FROM facts WHERE deleted_at IS NULL")
 	if err != nil {
 		return err
 	}
 	defer func() { _ = rows.Close() }()
 
+	debugLog("[reindexAllFacts] Creating batch...")
 	batch := s.index.NewBatch()
 	count := 0
 
@@ -213,6 +242,7 @@ func (s *SQLiteStore) reindexAllFacts() error {
 		count++
 		// Commit in batches of 100
 		if count%100 == 0 {
+			debugLog("[reindexAllFacts] Committing batch at count=%d", count)
 			if err := s.index.Batch(batch); err != nil {
 				return err
 			}
@@ -222,11 +252,13 @@ func (s *SQLiteStore) reindexAllFacts() error {
 
 	// Commit any remaining documents
 	if batch.Size() > 0 {
+		debugLog("[reindexAllFacts] Committing final batch, size=%d", batch.Size())
 		if err := s.index.Batch(batch); err != nil {
 			return err
 		}
 	}
 
+	debugLog("[reindexAllFacts] Done, indexed %d facts", count)
 	return rows.Err()
 }
 

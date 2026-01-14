@@ -125,10 +125,12 @@ func NewServer(s store.Store, instanceID, workDir string) *Server {
 }
 
 func (s *Server) Run() error {
+	fmt.Fprintf(os.Stderr, "[clauder] MCP server ready, waiting for requests...\n")
 	for {
 		line, err := s.reader.ReadBytes('\n')
 		if err != nil {
 			if err == io.EOF {
+				fmt.Fprintf(os.Stderr, "[clauder] EOF received, shutting down\n")
 				return nil
 			}
 			return fmt.Errorf("read error: %w", err)
@@ -140,7 +142,9 @@ func (s *Server) Run() error {
 			continue
 		}
 
+		fmt.Fprintf(os.Stderr, "[clauder] Received request: method=%s\n", req.Method)
 		s.handleRequest(&req)
+		fmt.Fprintf(os.Stderr, "[clauder] Finished handling: method=%s\n", req.Method)
 	}
 }
 

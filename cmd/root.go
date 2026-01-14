@@ -16,12 +16,16 @@ var rootCmd = &cobra.Command{
 - Multi-instance discovery and messaging across directories
 - Automatic context injection based on working directory`,
 	PersistentPreRun: func(cmd *cobra.Command, args []string) {
+		fmt.Fprintf(os.Stderr, "[clauder] PersistentPreRun starting...\n")
 		telemetry.SetVersion(Version)
+		fmt.Fprintf(os.Stderr, "[clauder] Initializing telemetry...\n")
 		telemetry.Init()
+		fmt.Fprintf(os.Stderr, "[clauder] Telemetry initialized\n")
 		// Track command usage (skip root command itself)
 		if cmd.Name() != "clauder" {
 			telemetry.TrackCommand(cmd.Name())
 		}
+		fmt.Fprintf(os.Stderr, "[clauder] PersistentPreRun complete\n")
 	},
 	PersistentPostRun: func(cmd *cobra.Command, args []string) {
 		telemetry.Close()
