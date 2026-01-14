@@ -12,7 +12,6 @@ import (
 
 	"github.com/maorbril/clauder/internal/mcp"
 	"github.com/maorbril/clauder/internal/store"
-	"github.com/maorbril/clauder/internal/tty"
 	"github.com/spf13/cobra"
 )
 
@@ -36,16 +35,12 @@ func runServe(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("failed to get working directory: %w", err)
 	}
 
-	// Get TTY for this process
-	ttyPath := tty.GetTTY()
-
-	// Use a stable instance ID based on directory + TTY
-	// This ensures messages persist across restarts, while supporting
-	// multiple instances in the same directory (different terminals)
-	instanceID := generateInstanceID(workDir, ttyPath)
+	// Use a stable instance ID based on directory
+	// This ensures messages persist across restarts
+	instanceID := generateInstanceID(workDir)
 
 	// Register this instance
-	if err := s.RegisterInstance(instanceID, os.Getpid(), workDir, ttyPath); err != nil {
+	if err := s.RegisterInstance(instanceID, os.Getpid(), workDir, ""); err != nil {
 		return fmt.Errorf("failed to register instance: %w", err)
 	}
 
@@ -88,20 +83,11 @@ func runServe(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-// generateInstanceID creates a stable instance ID based on directory and TTY
-// This ensures:
-// - Same terminal window gets same ID across Claude Code restarts
-// - Different terminals in same directory get different IDs
-// - Messages persist across restarts
-func generateInstanceID(directory, ttyPath string) string {
-	// Combine directory and TTY for uniqueness
-	// If no TTY (shouldn't happen), fall back to directory only
-	input := directory
-	if ttyPath != "" {
-		input = directory + ":" + ttyPath
-	}
-	hash := sha256.Sum256([]byte(input))
-	// Use first 16 bytes (32 hex chars) for a UUID-like format
+// generateInstanceID creates a stable instance ID based on directory
+// This ensures messages persist across Claude Code restarts
+func generateInstanceID(directory string) string {
+	hash := sha256.Sum256([]byte(directory))
+	// Use first 16 bytes (32 hex chars) for a readable ID
 	return hex.EncodeToString(hash[:16])
 }
 
