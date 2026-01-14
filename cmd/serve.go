@@ -39,6 +39,13 @@ func runServe(cmd *cobra.Command, args []string) error {
 	// This ensures messages persist across restarts
 	instanceID := generateInstanceID(workDir)
 
+	// Initialize per-instance Bleve index for full-text search
+	// Each instance gets its own index to avoid file locking issues
+	if err := s.InitIndex(instanceID); err != nil {
+		// Log warning but continue - search will fall back to SQLite
+		fmt.Fprintf(os.Stderr, "warning: failed to initialize search index: %v\n", err)
+	}
+
 	// Register this instance
 	if err := s.RegisterInstance(instanceID, os.Getpid(), workDir, ""); err != nil {
 		return fmt.Errorf("failed to register instance: %w", err)

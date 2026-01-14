@@ -21,9 +21,10 @@ const (
 )
 
 type SQLiteStore struct {
-	db      *sql.DB
-	index   bleve.Index
-	dataDir string
+	db         *sql.DB
+	index      bleve.Index
+	dataDir    string
+	instanceID string // Used for per-instance Bleve index
 }
 
 // FactDocument represents a fact for Bleve indexing
@@ -43,41 +44,112 @@ func NewSQLiteStore(dataDir string) (*SQLiteStore, error) {
 		return nil, fmt.Errorf("failed to open database: %w", err)
 	}
 
-	// Open or create Bleve index
-	indexPath := filepath.Join(dataDir, "facts.bleve")
-	index, needsReindex, err := openOrCreateIndex(indexPath)
-	if err != nil {
-		_ = db.Close()
-		return nil, fmt.Errorf("failed to open search index: %w", err)
-	}
-
-	store := &SQLiteStore{db: db, index: index, dataDir: dataDir}
+	store := &SQLiteStore{db: db, dataDir: dataDir}
 	if err := store.migrate(); err != nil {
-		_ = index.Close()
 		_ = db.Close()
 		return nil, fmt.Errorf("failed to migrate database: %w", err)
-	}
-
-	// Reindex existing facts if this is a new index
-	if needsReindex {
-		if err := store.reindexAllFacts(); err != nil {
-			_ = index.Close()
-			_ = db.Close()
-			return nil, fmt.Errorf("failed to reindex facts: %w", err)
-		}
 	}
 
 	return store, nil
 }
 
-// openOrCreateIndex opens an existing Bleve index or creates a new one
-func openOrCreateIndex(indexPath string) (bleve.Index, bool, error) {
-	// Try to open existing index
-	index, err := bleve.Open(indexPath)
-	if err == nil {
-		return index, false, nil
+// InitIndex initializes a per-instance Bleve index for full-text search.
+// Each instance gets its own index to avoid file locking issues between processes.
+// Call this for long-running processes (MCP server, UI) that benefit from full-text search.
+// Short-lived CLI commands can skip this and use SQLite-only search.
+func (s *SQLiteStore) InitIndex(instanceID string) error {
+	s.instanceID = instanceID
+
+	// Clean up old shared index from previous versions (pre-v0.6.0)
+	// This prevents the old facts.bleve from being left behind
+	oldIndexPath := filepath.Join(s.dataDir, "facts.bleve")
+	_ = os.RemoveAll(oldIndexPath)
+
+	// Clean up stale indexes from dead processes first
+	s.cleanupStaleIndexes()
+
+	// Create indexes directory
+	indexDir := filepath.Join(s.dataDir, "indexes")
+	if err := os.MkdirAll(indexDir, 0755); err != nil {
+		return fmt.Errorf("failed to create index directory: %w", err)
 	}
 
+	// Use instance-specific index path
+	indexPath := filepath.Join(indexDir, instanceID+".bleve")
+
+	// Always start fresh - delete existing index for this instance
+	// This ensures clean state and avoids corruption issues
+	_ = os.RemoveAll(indexPath)
+
+	index, err := createIndex(indexPath)
+	if err != nil {
+		return fmt.Errorf("failed to create search index: %w", err)
+	}
+
+	s.index = index
+
+	// Index all existing facts
+	if err := s.reindexAllFacts(); err != nil {
+		_ = index.Close()
+		s.index = nil
+		return fmt.Errorf("failed to index facts: %w", err)
+	}
+
+	return nil
+}
+
+// cleanupStaleIndexes removes index directories for instances that are no longer running
+func (s *SQLiteStore) cleanupStaleIndexes() {
+	indexDir := filepath.Join(s.dataDir, "indexes")
+	entries, err := os.ReadDir(indexDir)
+	if err != nil {
+		return // Directory might not exist yet
+	}
+
+	// Get list of active instance IDs
+	activeInstances := make(map[string]bool)
+	instances, err := s.GetInstances()
+	if err == nil {
+		for _, inst := range instances {
+			activeInstances[inst.ID] = true
+		}
+	}
+
+	for _, entry := range entries {
+		if !entry.IsDir() {
+			continue
+		}
+		name := entry.Name()
+		if !strings.HasSuffix(name, ".bleve") {
+			continue
+		}
+		instanceID := strings.TrimSuffix(name, ".bleve")
+
+		// Keep indexes for active instances
+		if activeInstances[instanceID] {
+			continue
+		}
+
+		// Remove stale index
+		indexPath := filepath.Join(indexDir, name)
+		_ = os.RemoveAll(indexPath)
+	}
+}
+
+// CleanupIndex removes this instance's Bleve index. Call on shutdown for CLI commands.
+func (s *SQLiteStore) CleanupIndex() {
+	if s.index != nil {
+		_ = s.index.Close()
+		s.index = nil
+	}
+	if s.instanceID != "" {
+		indexPath := filepath.Join(s.dataDir, "indexes", s.instanceID+".bleve")
+		_ = os.RemoveAll(indexPath)
+	}
+}
+
+// createIndex creates a new Bleve index at the given path
+func createIndex(indexPath string) (bleve.Index, error) {
 	// Create new index with custom mapping
 	mapping := bleve.NewIndexMapping()
 
@@ -97,12 +169,7 @@ func openOrCreateIndex(indexPath string) (bleve.Index, bool, error) {
 	mapping.AddDocumentMapping("fact", factMapping)
 	mapping.DefaultMapping = factMapping
 
-	index, err = bleve.New(indexPath, mapping)
-	if err != nil {
-		return nil, false, err
-	}
-
-	return index, true, nil
+	return bleve.New(indexPath, mapping)
 }
 
 // reindexAllFacts indexes all existing facts into Bleve
@@ -233,15 +300,17 @@ func (s *SQLiteStore) AddFact(content string, tags []string, sourceDir string) (
 		return nil, err
 	}
 
-	// Index in Bleve
-	doc := FactDocument{
-		Content:   content,
-		SourceDir: sourceDir,
-	}
-	if err := s.index.Index(strconv.FormatInt(id, 10), doc); err != nil {
-		// Log error but don't fail - SQLite is the source of truth
-		// The fact is stored, search just won't find it until reindex
-		_ = err
+	// Index in Bleve if available
+	if s.index != nil {
+		doc := FactDocument{
+			Content:   content,
+			SourceDir: sourceDir,
+		}
+		if err := s.index.Index(strconv.FormatInt(id, 10), doc); err != nil {
+			// Log error but don't fail - SQLite is the source of truth
+			// The fact is stored, search just won't find it until reindex
+			_ = err
+		}
 	}
 
 	return &Fact{
@@ -262,13 +331,14 @@ func (s *SQLiteStore) GetFacts(query string, tags []string, sourceDir string, li
 		limit = MaxLimit
 	}
 
-	// If there's a search query, use Bleve for relevance-ranked search
-	if query != "" {
+	// If there's a search query and Bleve is available, use it for relevance-ranked search
+	if query != "" && s.index != nil {
 		return s.searchFactsWithBleve(query, tags, sourceDir, limit)
 	}
 
-	// No query - use SQLite directly (list all facts with filters)
-	return s.listFacts(tags, sourceDir, limit)
+	// No query or no Bleve index - use SQLite directly
+	// Falls back to LIKE-based search if query is provided
+	return s.listFacts(tags, sourceDir, limit, query)
 }
 
 // searchFactsWithBleve uses Bleve for relevance-ranked full-text search
@@ -389,8 +459,9 @@ func (s *SQLiteStore) getFactsByIDs(ids []int64, tags []string) ([]Fact, error) 
 	return facts, nil
 }
 
-// listFacts returns facts without search query (simple list with filters)
-func (s *SQLiteStore) listFacts(tags []string, sourceDir string, limit int) ([]Fact, error) {
+// listFacts returns facts with optional filters and search query
+// When searchQuery is provided (fallback mode), uses LIKE-based search
+func (s *SQLiteStore) listFacts(tags []string, sourceDir string, limit int, searchQuery string) ([]Fact, error) {
 	var args []any
 	var conditions []string
 
@@ -399,6 +470,12 @@ func (s *SQLiteStore) listFacts(tags []string, sourceDir string, limit int) ([]F
 	if sourceDir != "" {
 		conditions = append(conditions, "source_dir = ?")
 		args = append(args, sourceDir)
+	}
+
+	// Fallback search using LIKE when Bleve is not available
+	if searchQuery != "" {
+		conditions = append(conditions, "content LIKE ?")
+		args = append(args, "%"+searchQuery+"%")
 	}
 
 	for _, tag := range tags {
@@ -467,8 +544,10 @@ func (s *SQLiteStore) SoftDeleteFact(id int64) error {
 		return err
 	}
 
-	// Remove from Bleve index
-	_ = s.index.Delete(strconv.FormatInt(id, 10))
+	// Remove from Bleve index if available
+	if s.index != nil {
+		_ = s.index.Delete(strconv.FormatInt(id, 10))
+	}
 
 	return nil
 }
