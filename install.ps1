@@ -3,7 +3,7 @@
 
 $ErrorActionPreference = "Stop"
 
-$Repo = "orsi-bit/openclawder"
+$Repo = "orsi-bit/openclawderr"
 $InstallDir = if ($env:OPENCLAWDER_INSTALL_DIR) { $env:OPENCLAWDER_INSTALL_DIR } else { "$env:LOCALAPPDATA\openclawder" }
 
 function Get-Architecture {

@@ -23,17 +23,17 @@ Works with: Claude Code, OpenClaw, Cursor, Windsurf, OpenCode, Codex CLI, Gemini
 
 **macOS / Linux:**
 ```bash
-curl -sSL https://raw.githubusercontent.com/orsi-bit/openclawder/main/install.sh | sh
+curl -sSL https://raw.githubusercontent.com/orsi-bit/openclawderr/main/install.sh | sh
 ```
 
 **Windows (PowerShell):**
 ```powershell
-irm https://raw.githubusercontent.com/orsi-bit/openclawder/main/install.ps1 | iex
+irm https://raw.githubusercontent.com/orsi-bit/openclawderr/main/install.ps1 | iex
 ```
 
 **Go:**
 ```bash
-go install github.com/orsi-bit/openclawder@latest
+go install github.com/orsi-bit/openclawderr@latest
 ```
 
 ---

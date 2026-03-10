@@ -2,9 +2,9 @@
 set -e
 
 # openclawder installer script
-# Usage: curl -sSL https://raw.githubusercontent.com/orsi-bit/openclawder/main/install.sh | sh
+# Usage: curl -sSL https://raw.githubusercontent.com/orsi-bit/openclawderr/main/install.sh | sh
 
-REPO="orsi-bit/openclawder"
+REPO="orsi-bit/openclawderr"
 INSTALL_DIR="${OPENCLAWDER_INSTALL_DIR:-$HOME/.local/bin}"
 
 # Detect OS
