@@ -1,5 +1,5 @@
 # openclawder installer script for Windows
-# Usage: irm https://raw.githubusercontent.com/orsi-bit/openclawder/main/install.ps1 | iex
+# Usage: irm https://raw.githubusercontent.com/orsi-bit/openclawderr/main/install.ps1 | iex
 
 $ErrorActionPreference = "Stop"
 

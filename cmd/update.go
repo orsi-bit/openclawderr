@@ -14,14 +14,14 @@ import (
 )
 
 const (
-	// Version is the current version of clauder
+	// Version is the current version of openclawder
 	Version = "0.9.2"
 
 	// GitHubOwner is the GitHub repository owner
 	GitHubOwner = "orsi-bit"
 
-	// GitHubRepo is the GitHub repository name
-	GitHubRepo = "openclawder"
+	// GitHubRepo is the GitHub repository name (actual repo has double-r)
+	GitHubRepo = "openclawderr"
 )
 
 var (

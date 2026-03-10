@@ -99,18 +99,39 @@ main() {
     echo ""
     echo "Installed openclawder to $DEST"
 
-    # Check if install dir is in PATH
+    # Add install dir to PATH in shell profiles if not already present
     case ":$PATH:" in
-        *":$INSTALL_DIR:"*) ;;
+        *":$INSTALL_DIR:"*)
+            echo "  $INSTALL_DIR is already in your PATH."
+            ;;
         *)
+            PATH_LINE="export PATH=\"\$PATH:$HOME/.local/bin\""
+
+            for PROFILE in "$HOME/.bashrc" "$HOME/.zshrc"; do
+                if [ -f "$PROFILE" ]; then
+                    if ! grep -qF '/.local/bin' "$PROFILE" 2>/dev/null; then
+                        echo "" >> "$PROFILE"
+                        echo "# Added by openclawder installer" >> "$PROFILE"
+                        echo "$PATH_LINE" >> "$PROFILE"
+                        echo "  Added $INSTALL_DIR to PATH in $(basename "$PROFILE")"
+                    fi
+                fi
+            done
+
+            # If neither profile existed, create .bashrc with the PATH
+            if [ ! -f "$HOME/.bashrc" ] && [ ! -f "$HOME/.zshrc" ]; then
+                echo "# Added by openclawder installer" > "$HOME/.bashrc"
+                echo "$PATH_LINE" >> "$HOME/.bashrc"
+                echo "  Created ~/.bashrc with PATH entry"
+            fi
+
             echo ""
-            echo "Add openclawder to your PATH by adding this to your shell profile:"
-            echo ""
-            echo "  export PATH=\"\$PATH:$INSTALL_DIR\""
-            echo ""
+            echo "To use openclawder now, run:"
+            echo "  source ~/.zshrc   # (or source ~/.bashrc, or open a new terminal)"
             ;;
     esac
 
+    echo ""
     echo "Run 'openclawder setup' to configure your AI coding tool."
 }
 
