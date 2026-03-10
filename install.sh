@@ -28,9 +28,8 @@ detect_arch() {
 
 # Get latest release tag
 get_latest_version() {
-    curl -sSL "https://api.github.com/repos/${REPO}/releases/latest" | \
-        grep '"tag_name":' | \
-        sed -E 's/.*"([^"]+)".*/\1/'
+    API_RESPONSE=$(curl -sSL "https://api.github.com/repos/${REPO}/releases/latest" 2>/dev/null) || true
+    echo "$API_RESPONSE" | grep '"tag_name":' | sed -E 's/.*"tag_name": *"([^"]+)".*/\1/' | tr -d '[:space:]'
 }
 
 main() {
@@ -48,8 +47,13 @@ main() {
     VERSION=$(get_latest_version)
     if [ -z "$VERSION" ]; then
         echo "Error: Could not determine latest version"
+        echo "Check https://github.com/${REPO}/releases and try:"
+        echo "  OPENCLAWDER_VERSION=v0.1.0 sh install.sh"
         exit 1
     fi
+
+    # Allow version override
+    VERSION="${OPENCLAWDER_VERSION:-$VERSION}"
 
     echo "  OS: $OS"
     echo "  Arch: $ARCH"
@@ -74,9 +78,9 @@ main() {
     fi
 
     if command -v curl >/dev/null 2>&1; then
-        curl -sSL "$URL" -o "$DEST"
+        curl -fSL "$URL" -o "$DEST" || { echo "Error: Download failed. Check https://github.com/${REPO}/releases"; exit 1; }
     elif command -v wget >/dev/null 2>&1; then
-        wget -q "$URL" -O "$DEST"
+        wget -q "$URL" -O "$DEST" || { echo "Error: Download failed. Check https://github.com/${REPO}/releases"; exit 1; }
     else
         echo "Error: curl or wget required"
         exit 1
