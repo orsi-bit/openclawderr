@@ -26,10 +26,17 @@ detect_arch() {
     esac
 }
 
-# Get latest release tag
+# Get latest release tag via redirect (avoids JSON parsing issues)
 get_latest_version() {
-    API_RESPONSE=$(curl -sSL "https://api.github.com/repos/${REPO}/releases/latest" 2>/dev/null) || true
-    echo "$API_RESPONSE" | grep '"tag_name":' | sed -E 's/.*"tag_name": *"([^"]+)".*/\1/' | tr -d '[:space:]'
+    # Follow the /releases/latest redirect and extract the tag from the final URL
+    LOCATION=$(curl -sSLI "https://github.com/${REPO}/releases/latest" 2>/dev/null | grep -i "^location:" | tail -1) || true
+    if [ -n "$LOCATION" ]; then
+        echo "$LOCATION" | sed -E 's|.*releases/tag/([^ \r\n]+).*|\1|' | tr -d '[:space:]'
+        return
+    fi
+    # Fallback: JSON API
+    curl -sSL "https://api.github.com/repos/${REPO}/releases/latest" 2>/dev/null \
+        | sed -n 's/.*"tag_name": *"\([^"]*\)".*/\1/p' | tr -d '[:space:]' || true
 }
 
 main() {
