@@ -1,0 +1,4758 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OpenClawder Dashboard</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/xterm@5.3.0/css/xterm.css">
+    <script src="https://cdn.jsdelivr.net/npm/xterm@5.3.0/lib/xterm.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/xterm-addon-fit@0.8.0/lib/xterm-addon-fit.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/xterm-addon-web-links@0.9.0/lib/xterm-addon-web-links.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3.0.0/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/cytoscape@3.30.4/dist/cytoscape.min.js"></script>
+    <style>
+        :root {
+            --primary: #8B5CF6;
+            --primary-light: #A78BFA;
+            --primary-dark: #7C3AED;
+            --secondary: #06B6D4;
+            --secondary-light: #22D3EE;
+            --success: #10B981;
+            --success-light: #34D399;
+            --warning: #F59E0B;
+            --warning-light: #FBBF24;
+            --error: #EF4444;
+            --muted: #64748B;
+            --muted-light: #94A3B8;
+            --text: #F1F5F9;
+            --text-secondary: #CBD5E1;
+            --bg: #0F172A;
+            --bg-card: #1E293B;
+            --bg-card-hover: #334155;
+            --border: #334155;
+            --border-light: #475569;
+            --glass: rgba(30, 41, 59, 0.8);
+            --glass-border: rgba(148, 163, 184, 0.1);
+            --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3), 0 2px 4px -2px rgba(0, 0, 0, 0.2);
+            --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.3), 0 4px 6px -4px rgba(0, 0, 0, 0.2);
+            --radius: 12px;
+            --radius-sm: 8px;
+            --radius-lg: 16px;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+            line-height: 1.5;
+        }
+
+        /* Layout */
+        .app {
+            display: flex;
+            min-height: 100vh;
+        }
+
+        /* Sidebar */
+        .sidebar {
+            width: 280px;
+            background: linear-gradient(180deg, var(--bg-card) 0%, var(--bg) 100%);
+            border-right: 1px solid var(--border);
+            padding: 1.5rem;
+            display: flex;
+            flex-direction: column;
+            position: fixed;
+            height: 100vh;
+            overflow-y: auto;
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            padding: 0.5rem 0;
+            margin-bottom: 2rem;
+        }
+
+        .logo-icon {
+            width: 40px;
+            height: 40px;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+            border-radius: var(--radius-sm);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.25rem;
+        }
+
+        .logo-text {
+            font-weight: 700;
+            font-size: 1.25rem;
+            background: linear-gradient(135deg, var(--primary-light) 0%, var(--secondary-light) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .nav {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        .nav-item {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            padding: 0.875rem 1rem;
+            border-radius: var(--radius-sm);
+            color: var(--text-secondary);
+            cursor: pointer;
+            transition: background-color 0.2s ease, color 0.2s ease;
+            font-weight: 500;
+            position: relative;
+        }
+
+        .nav-item:hover {
+            background: var(--bg-card-hover);
+            color: var(--text);
+        }
+
+        .nav-item.active {
+            background: linear-gradient(135deg, rgba(139, 92, 246, 0.2) 0%, rgba(6, 182, 212, 0.1) 100%);
+            color: var(--primary-light);
+        }
+
+        .nav-item.active::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 3px;
+            height: 24px;
+            background: var(--primary);
+            border-radius: 0 3px 3px 0;
+        }
+
+        .nav-icon {
+            font-size: 1.125rem;
+            width: 24px;
+            text-align: center;
+        }
+
+        .nav-badge {
+            margin-left: auto;
+            background: var(--primary);
+            color: white;
+            font-size: 0.75rem;
+            font-weight: 600;
+            padding: 0.125rem 0.5rem;
+            border-radius: 9999px;
+            min-width: 20px;
+            text-align: center;
+        }
+
+        .nav-badge.warning {
+            background: var(--warning);
+        }
+
+        /* Stats Cards */
+        .stats-section {
+            margin-top: auto;
+            padding-top: 1.5rem;
+            border-top: 1px solid var(--border);
+        }
+
+        .stats-title {
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--muted);
+            margin-bottom: 1rem;
+            font-weight: 600;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 0.75rem;
+        }
+
+        .stat-card {
+            background: var(--bg-card-hover);
+            padding: 0.875rem;
+            border-radius: var(--radius-sm);
+        }
+
+        .stat-value {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--text);
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        .stat-label {
+            font-size: 0.75rem;
+            color: var(--muted);
+            margin-top: 0.25rem;
+        }
+
+        /* Main Content */
+        .main {
+            flex: 1;
+            margin-left: 280px;
+            padding: 2rem;
+            max-width: calc(100vw - 280px);
+        }
+
+        /* Page Header */
+        .page-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 2rem;
+        }
+
+        .page-title {
+            font-size: 1.75rem;
+            font-weight: 700;
+        }
+
+        .page-subtitle {
+            color: var(--muted);
+            font-size: 0.875rem;
+            margin-top: 0.25rem;
+        }
+
+        .header-actions {
+            display: flex;
+            gap: 0.75rem;
+        }
+
+        /* Buttons */
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.625rem 1rem;
+            border-radius: var(--radius-sm);
+            font-weight: 500;
+            font-size: 0.875rem;
+            cursor: pointer;
+            transition: background-color 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+            border: none;
+            font-family: inherit;
+        }
+
+        .btn-primary {
+            background: var(--primary);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: var(--primary-dark);
+            box-shadow: var(--shadow);
+        }
+
+        .btn-secondary {
+            background: var(--bg-card);
+            color: var(--text);
+            border: 1px solid var(--border);
+        }
+
+        .btn-secondary:hover {
+            background: var(--bg-card-hover);
+            border-color: var(--border-light);
+        }
+
+        .btn-sm {
+            padding: 0.375rem 0.75rem;
+            font-size: 0.8125rem;
+        }
+
+        /* Filter Bar */
+        .filter-bar {
+            display: flex;
+            gap: 0.75rem;
+            margin-bottom: 1.5rem;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+
+        .search-box {
+            flex: 1;
+            min-width: 200px;
+            max-width: 400px;
+            position: relative;
+        }
+
+        .search-box input {
+            width: 100%;
+            padding: 0.625rem 1rem 0.625rem 2.5rem;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
+            color: var(--text);
+            font-size: 0.875rem;
+            font-family: inherit;
+            transition: border-color 0.2s ease, box-shadow 0.2s ease;
+        }
+
+        .search-box input:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.1);
+        }
+
+        .search-box input::placeholder {
+            color: var(--muted);
+        }
+
+        .search-icon {
+            position: absolute;
+            left: 0.875rem;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--muted);
+        }
+
+        .filter-group {
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        .filter-btn {
+            padding: 0.5rem 0.875rem;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
+            color: var(--text-secondary);
+            font-size: 0.8125rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease;
+            font-family: inherit;
+        }
+
+        .filter-btn:hover {
+            background: var(--bg-card-hover);
+            color: var(--text);
+        }
+
+        .filter-btn.active {
+            background: var(--primary);
+            border-color: var(--primary);
+            color: white;
+        }
+
+        .filter-select {
+            padding: 0.5rem 2rem 0.5rem 0.875rem;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
+            color: var(--text);
+            font-size: 0.8125rem;
+            font-family: inherit;
+            cursor: pointer;
+            appearance: none;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2394A3B8' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6,9 12,15 18,9'%3E%3C/polyline%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 0.75rem center;
+        }
+
+        .filter-select:focus {
+            outline: none;
+            border-color: var(--primary);
+        }
+
+        /* Cards Grid */
+        .cards-grid {
+            display: grid;
+            gap: 1rem;
+        }
+
+        /* Instance Card */
+        .instance-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 1.25rem;
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            transition: background-color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+            cursor: pointer;
+        }
+
+        .instance-card:hover {
+            background: var(--bg-card-hover);
+            border-color: var(--border-light);
+            box-shadow: var(--shadow);
+        }
+
+        .instance-avatar {
+            width: 48px;
+            height: 48px;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+            border-radius: var(--radius-sm);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: 'JetBrains Mono', monospace;
+            font-weight: 600;
+            font-size: 0.875rem;
+            flex-shrink: 0;
+        }
+
+        .instance-info {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .instance-id {
+            font-family: 'JetBrains Mono', monospace;
+            font-weight: 600;
+            font-size: 0.9375rem;
+            color: var(--text);
+        }
+
+        .instance-dir {
+            color: var(--muted);
+            font-size: 0.8125rem;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            margin-top: 0.125rem;
+        }
+
+        .instance-badges {
+            display: flex;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+        }
+
+        .badge {
+            font-size: 0.6875rem;
+            padding: 0.25rem 0.625rem;
+            border-radius: 9999px;
+            text-transform: uppercase;
+            font-weight: 600;
+            letter-spacing: 0.025em;
+        }
+
+        .badge-leader,
+        .badge-active {
+            background: rgba(16, 185, 129, 0.15);
+            color: var(--success-light);
+        }
+
+        .badge-idle {
+            background: rgba(245, 158, 11, 0.15);
+            color: var(--warning-light);
+        }
+
+        .badge-inactive {
+            background: rgba(100, 116, 139, 0.15);
+            color: var(--muted-light);
+        }
+
+        .instance-time {
+            color: var(--muted);
+            font-size: 0.75rem;
+            white-space: nowrap;
+        }
+
+        /* Message Card */
+        .message-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 1.25rem;
+            transition: background-color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+            cursor: pointer;
+            position: relative;
+        }
+
+        .message-card:hover {
+            background: var(--bg-card-hover);
+            border-color: var(--border-light);
+            box-shadow: var(--shadow);
+        }
+
+        .message-card.unread {
+            border-left: 3px solid var(--primary);
+        }
+
+        .message-card.unread::before {
+            content: '';
+            position: absolute;
+            top: 1rem;
+            right: 1rem;
+            width: 8px;
+            height: 8px;
+            background: var(--primary);
+            border-radius: 50%;
+        }
+
+        .message-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 0.75rem;
+        }
+
+        .message-from {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .message-avatar {
+            width: 32px;
+            height: 32px;
+            background: var(--bg-card-hover);
+            border-radius: var(--radius-sm);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.6875rem;
+            font-weight: 600;
+            color: var(--primary-light);
+        }
+
+        .message-meta {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .message-sender {
+            font-weight: 600;
+            font-size: 0.875rem;
+        }
+
+        .message-direction {
+            font-size: 0.75rem;
+            color: var(--muted);
+        }
+
+        .message-time {
+            font-size: 0.75rem;
+            color: var(--muted);
+        }
+
+        .message-content {
+            color: var(--text-secondary);
+            font-size: 0.875rem;
+            line-height: 1.6;
+            display: -webkit-box;
+            -webkit-line-clamp: 3;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+
+        .message-card.unread .message-content {
+            color: var(--text);
+        }
+
+        /* Fact Card */
+        .fact-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 1.25rem;
+            transition: background-color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+            cursor: pointer;
+        }
+
+        .fact-card:hover {
+            background: var(--bg-card-hover);
+            border-color: var(--border-light);
+            box-shadow: var(--shadow);
+        }
+
+        .fact-card.local {
+            border-left: 3px solid var(--success);
+        }
+
+        .fact-content {
+            color: var(--text);
+            font-size: 0.9375rem;
+            line-height: 1.6;
+            margin-bottom: 1rem;
+            display: -webkit-box;
+            -webkit-line-clamp: 3;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+
+        .fact-footer {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 0.75rem;
+        }
+
+        .fact-tags {
+            display: flex;
+            gap: 0.375rem;
+            flex-wrap: wrap;
+        }
+
+        .tag {
+            font-size: 0.6875rem;
+            padding: 0.25rem 0.5rem;
+            border-radius: var(--radius-sm);
+            background: rgba(6, 182, 212, 0.15);
+            color: var(--secondary-light);
+            font-weight: 500;
+        }
+
+        .fact-source {
+            font-size: 0.75rem;
+            color: var(--muted);
+            display: flex;
+            align-items: center;
+            gap: 0.375rem;
+        }
+
+        .fact-source.local {
+            color: var(--success);
+        }
+
+        .fact-footer-right {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .delete-fact-btn {
+            background: none;
+            border: none;
+            cursor: pointer;
+            font-size: 0.875rem;
+            padding: 0.25rem;
+            border-radius: var(--radius-sm);
+            opacity: 0;
+            transition: opacity 0.15s, background 0.15s;
+            line-height: 1;
+        }
+
+        .delete-fact-btn:hover {
+            background: rgba(239, 68, 68, 0.2);
+        }
+
+        .fact-card:hover .delete-fact-btn {
+            opacity: 0.7;
+        }
+
+        .fact-card:hover .delete-fact-btn:hover {
+            opacity: 1;
+        }
+
+        /* Fact Stats Banner */
+        .fact-stats-banner {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            margin-bottom: 1.5rem;
+            overflow: hidden;
+        }
+
+        .fact-stats-summary {
+            display: flex;
+            align-items: center;
+            gap: 1.5rem;
+            padding: 1rem 1.25rem;
+            cursor: pointer;
+            transition: background 0.15s;
+        }
+
+        .fact-stats-summary:hover {
+            background: var(--bg-card-hover);
+        }
+
+        .fact-stats-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 0.125rem;
+        }
+
+        .fact-stats-value {
+            font-size: 1.25rem;
+            font-weight: 700;
+            font-family: 'JetBrains Mono', monospace;
+            color: var(--text);
+        }
+
+        .fact-stats-label {
+            font-size: 0.6875rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--muted);
+            font-weight: 600;
+        }
+
+        .fact-stats-separator {
+            width: 1px;
+            height: 2rem;
+            background: var(--border);
+        }
+
+        .fact-stats-expand {
+            margin-left: auto;
+            color: var(--muted);
+            font-size: 0.75rem;
+            transition: transform 0.2s;
+        }
+
+        .fact-stats-expand.expanded {
+            transform: rotate(180deg);
+        }
+
+        .fact-stats-details {
+            display: none;
+            border-top: 1px solid var(--border);
+            padding: 1rem 1.25rem;
+        }
+
+        .fact-stats-details.expanded {
+            display: block;
+        }
+
+        .fact-stats-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.8125rem;
+        }
+
+        .fact-stats-table th {
+            text-align: left;
+            color: var(--muted);
+            font-weight: 600;
+            text-transform: uppercase;
+            font-size: 0.6875rem;
+            letter-spacing: 0.05em;
+            padding: 0.5rem 0.75rem;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .fact-stats-table td {
+            padding: 0.5rem 0.75rem;
+            color: var(--text-secondary);
+            border-bottom: 1px solid rgba(51, 65, 85, 0.5);
+        }
+
+        .fact-stats-table tr:last-child td {
+            border-bottom: none;
+        }
+
+        .btn-danger {
+            background: rgba(239, 68, 68, 0.15);
+            color: var(--error);
+            border: 1px solid rgba(239, 68, 68, 0.3);
+            padding: 0.375rem 0.75rem;
+            border-radius: var(--radius-sm);
+            cursor: pointer;
+            font-size: 0.75rem;
+            font-weight: 600;
+            transition: all 0.15s;
+        }
+
+        .btn-danger:hover {
+            background: rgba(239, 68, 68, 0.25);
+            border-color: rgba(239, 68, 68, 0.5);
+        }
+
+        /* Select Mode */
+        .fact-card.selectable {
+            position: relative;
+            padding-left: 2.75rem;
+        }
+
+        .fact-select-checkbox {
+            position: absolute;
+            left: 1rem;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 18px;
+            height: 18px;
+            border: 2px solid var(--border-light);
+            border-radius: 4px;
+            cursor: pointer;
+            transition: all 0.15s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.6875rem;
+            color: white;
+        }
+
+        .fact-card.selected-for-delete .fact-select-checkbox {
+            background: var(--error);
+            border-color: var(--error);
+        }
+
+        .fact-card.selected-for-delete {
+            border-color: rgba(239, 68, 68, 0.4);
+            background: rgba(239, 68, 68, 0.05);
+        }
+
+        /* Bulk Action Bar */
+        .bulk-action-bar {
+            display: none;
+            position: fixed;
+            bottom: 1.5rem;
+            left: 50%;
+            transform: translateX(-50%);
+            background: var(--bg-card);
+            border: 1px solid var(--border-light);
+            border-radius: var(--radius);
+            padding: 0.75rem 1.25rem;
+            box-shadow: var(--shadow-lg);
+            z-index: 50;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .bulk-action-bar.active {
+            display: flex;
+        }
+
+        .bulk-count {
+            font-size: 0.875rem;
+            font-weight: 600;
+            color: var(--text);
+            white-space: nowrap;
+        }
+
+        .bulk-action-bar .btn {
+            font-size: 0.8125rem;
+            padding: 0.375rem 0.75rem;
+        }
+
+        /* Edit/Create Form Inputs */
+        .modal-edit-textarea,
+        .modal-edit-tags-input {
+            width: 100%;
+            padding: 0.75rem 1rem;
+            background: var(--bg);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
+            color: var(--text);
+            font-size: 0.875rem;
+        }
+
+        .modal-edit-textarea:focus,
+        .modal-edit-tags-input:focus {
+            outline: none;
+            border-color: var(--primary);
+        }
+
+        .modal-edit-textarea {
+            min-height: 150px;
+            font-family: 'JetBrains Mono', monospace;
+            line-height: 1.6;
+            resize: vertical;
+        }
+
+        /* Map View */
+        .map-layout {
+            display: flex;
+            gap: 1.5rem;
+            height: calc(100vh - 4rem);
+        }
+
+        .hex-container {
+            flex: 1;
+            background: linear-gradient(135deg, rgba(15, 23, 42, 0.9) 0%, rgba(30, 41, 59, 0.6) 100%);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-lg);
+            overflow: auto;
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .hex-container::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-image:
+                linear-gradient(rgba(6, 182, 212, 0.03) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(6, 182, 212, 0.03) 1px, transparent 1px);
+            background-size: 40px 40px;
+            pointer-events: none;
+            border-radius: var(--radius-lg);
+        }
+
+        .hex-grid {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100%;
+            position: relative;
+            z-index: 1;
+            padding: 2rem;
+            gap: 0;
+        }
+
+        .hex-row {
+            display: flex;
+            justify-content: center;
+            margin-top: -30px;
+        }
+
+        .hex-row:first-child {
+            margin-top: 0;
+        }
+
+        .hex {
+            width: 140px;
+            height: 160px;
+            position: relative;
+            cursor: pointer;
+            transition: transform 0.3s ease;
+            margin: 0 5px;
+        }
+
+        .hex-inner {
+            width: 100%;
+            height: 100%;
+            clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);
+            background: var(--bg-card);
+            border: 2px solid var(--border);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 1rem;
+            transition: background-color 0.3s ease, transform 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .hex:hover .hex-inner {
+            background: var(--bg-card-hover);
+            transform: scale(1.05);
+        }
+
+        .hex.active .hex-inner {
+            border-color: var(--secondary);
+            box-shadow: 0 0 20px rgba(6, 182, 212, 0.3), inset 0 0 20px rgba(6, 182, 212, 0.1);
+        }
+
+        .hex.needs-attention .hex-inner {
+            border-color: var(--warning);
+            box-shadow: 0 0 20px rgba(245, 158, 11, 0.3), inset 0 0 20px rgba(245, 158, 11, 0.1);
+            animation: pulse-attention 2s ease-in-out infinite;
+        }
+
+        .hex.inactive .hex-inner {
+            border-color: var(--muted);
+            opacity: 0.6;
+        }
+
+        @keyframes pulse-attention {
+            0%, 100% { box-shadow: 0 0 20px rgba(245, 158, 11, 0.3), inset 0 0 20px rgba(245, 158, 11, 0.1); }
+            50% { box-shadow: 0 0 30px rgba(245, 158, 11, 0.5), inset 0 0 30px rgba(245, 158, 11, 0.2); }
+        }
+
+        .hex-badge {
+            position: absolute;
+            top: 8px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 24px;
+            height: 24px;
+            background: var(--primary);
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.75rem;
+            font-weight: 700;
+            color: white;
+            z-index: 2;
+        }
+
+        .hex-project {
+            font-weight: 600;
+            font-size: 0.875rem;
+            color: var(--text);
+            text-align: center;
+            margin-bottom: 0.25rem;
+            max-width: 100px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .hex-status {
+            font-size: 0.6875rem;
+            padding: 0.125rem 0.5rem;
+            border-radius: 9999px;
+            text-transform: uppercase;
+            font-weight: 600;
+            letter-spacing: 0.025em;
+        }
+
+        .hex-status.working {
+            background: rgba(16, 185, 129, 0.2);
+            color: var(--success-light);
+        }
+
+        .hex-status.attention {
+            background: rgba(245, 158, 11, 0.2);
+            color: var(--warning-light);
+        }
+
+        .hex-status.offline {
+            background: rgba(100, 116, 139, 0.2);
+            color: var(--muted-light);
+        }
+
+        .hex-time {
+            font-size: 0.6875rem;
+            color: var(--muted);
+            margin-top: 0.25rem;
+        }
+
+        /* Session Panel */
+        .session-panel {
+            width: 380px;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-lg);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .session-header {
+            padding: 1.25rem 1.5rem;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .session-title {
+            font-weight: 600;
+            font-size: 1rem;
+        }
+
+        .session-stats {
+            font-size: 0.8125rem;
+            color: var(--muted);
+        }
+
+        .session-list {
+            flex: 1;
+            overflow-y: auto;
+            padding: 0.75rem;
+        }
+
+        .session-card {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            padding: 0.875rem;
+            border-radius: var(--radius-sm);
+            cursor: pointer;
+            transition: background-color 0.2s ease, border-color 0.2s ease;
+            margin-bottom: 0.5rem;
+            background: transparent;
+            border: 1px solid transparent;
+        }
+
+        .session-card:hover {
+            background: var(--bg-card-hover);
+        }
+
+        .session-card.selected {
+            background: rgba(139, 92, 246, 0.1);
+            border-color: var(--primary);
+        }
+
+        .session-card.needs-attention {
+            border-left: 3px solid var(--warning);
+        }
+
+        .session-badge {
+            width: 28px;
+            height: 28px;
+            background: var(--bg-card-hover);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.8125rem;
+            font-weight: 600;
+            color: var(--text-secondary);
+            flex-shrink: 0;
+        }
+
+        .session-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            flex-shrink: 0;
+        }
+
+        .session-dot.working {
+            background: var(--success);
+            box-shadow: 0 0 8px var(--success);
+        }
+
+        .session-dot.attention {
+            background: var(--warning);
+            box-shadow: 0 0 8px var(--warning);
+            animation: pulse-dot 1.5s ease-in-out infinite;
+        }
+
+        .session-dot.offline {
+            background: var(--muted);
+        }
+
+        @keyframes pulse-dot {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        .session-info {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .session-name {
+            font-weight: 600;
+            font-size: 0.875rem;
+            color: var(--text);
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .session-name .attention-label {
+            font-size: 0.6875rem;
+            padding: 0.125rem 0.375rem;
+            background: rgba(245, 158, 11, 0.2);
+            color: var(--warning-light);
+            border-radius: 4px;
+            font-weight: 500;
+        }
+
+        .session-path {
+            font-size: 0.75rem;
+            color: var(--muted);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .session-time {
+            font-size: 0.6875rem;
+            color: var(--muted);
+            white-space: nowrap;
+        }
+
+        /* Empty State */
+        .empty-state {
+            text-align: center;
+            padding: 4rem 2rem;
+            color: var(--muted);
+        }
+
+        .empty-icon {
+            font-size: 3rem;
+            margin-bottom: 1rem;
+            opacity: 0.5;
+        }
+
+        .empty-title {
+            font-size: 1.125rem;
+            font-weight: 600;
+            color: var(--text-secondary);
+            margin-bottom: 0.5rem;
+        }
+
+        .empty-description {
+            font-size: 0.875rem;
+        }
+
+        /* Modal */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.75);
+            backdrop-filter: blur(4px);
+            z-index: 100;
+            align-items: center;
+            justify-content: center;
+            padding: 2rem;
+        }
+
+        .modal-overlay.active {
+            display: flex;
+        }
+
+        .modal {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-lg);
+            max-width: 640px;
+            max-height: 80vh;
+            width: 100%;
+            overflow: hidden;
+            box-shadow: var(--shadow-lg);
+        }
+
+        .modal-header {
+            padding: 1.25rem 1.5rem;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .modal-title {
+            font-weight: 600;
+            font-size: 1.125rem;
+        }
+
+        .modal-close {
+            background: none;
+            border: none;
+            color: var(--muted);
+            cursor: pointer;
+            font-size: 1.5rem;
+            line-height: 1;
+            padding: 0.25rem;
+            border-radius: var(--radius-sm);
+            transition: color 0.2s ease, background-color 0.2s ease;
+        }
+
+        .modal-close:hover {
+            color: var(--text);
+            background: var(--bg-card-hover);
+        }
+
+        .modal-body {
+            padding: 1.5rem;
+            overflow-y: auto;
+            max-height: calc(80vh - 70px);
+        }
+
+        .modal-field {
+            margin-bottom: 1rem;
+        }
+
+        .modal-label {
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--muted);
+            margin-bottom: 0.375rem;
+            font-weight: 600;
+        }
+
+        .modal-value {
+            font-size: 0.9375rem;
+            color: var(--text);
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        .modal-content {
+            background: var(--bg);
+            padding: 1rem;
+            border-radius: var(--radius-sm);
+            font-size: 0.875rem;
+            white-space: pre-wrap;
+            word-break: break-word;
+            line-height: 1.6;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+
+        .modal-actions {
+            display: flex;
+            justify-content: flex-end;
+            gap: 0.75rem;
+            margin-top: 1.5rem;
+            padding-top: 1rem;
+            border-top: 1px solid var(--border);
+        }
+
+        .launch-input {
+            width: 100%;
+            padding: 0.75rem 1rem;
+            background: var(--bg);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
+            color: var(--text);
+            font-size: 0.875rem;
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        .launch-input:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.1);
+        }
+
+        .quick-launch-list {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+
+        .quick-launch-item {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            padding: 0.75rem;
+            background: var(--bg);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
+            cursor: pointer;
+            transition: background-color 0.2s ease, border-color 0.2s ease;
+        }
+
+        .quick-launch-item:hover {
+            background: var(--bg-card-hover);
+            border-color: var(--primary);
+        }
+
+        .quick-launch-icon {
+            width: 32px;
+            height: 32px;
+            background: var(--bg-card-hover);
+            border-radius: var(--radius-sm);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1rem;
+        }
+
+        .quick-launch-info {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .quick-launch-name {
+            font-weight: 600;
+            font-size: 0.875rem;
+            color: var(--text);
+        }
+
+        .quick-launch-path {
+            font-size: 0.75rem;
+            color: var(--muted);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        /* Terminal */
+        .terminal-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.9);
+            z-index: 200;
+            padding: 1rem;
+            justify-content: center;
+        }
+
+        .terminal-overlay.active {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .terminal-wrapper {
+            display: flex;
+            flex-direction: column;
+            width: 100%;
+            max-width: 1200px;
+            height: 100%;
+        }
+
+        .terminal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.75rem 1rem;
+            background: var(--bg-card);
+            border-radius: var(--radius-sm) var(--radius-sm) 0 0;
+            border: 1px solid var(--border);
+            border-bottom: none;
+        }
+
+        .terminal-title {
+            font-weight: 600;
+            font-size: 0.875rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .terminal-title-dot {
+            width: 8px;
+            height: 8px;
+            background: var(--success);
+            border-radius: 50%;
+            animation: pulse-dot 1.5s ease-in-out infinite;
+        }
+
+        .terminal-actions {
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        .terminal-btn {
+            background: none;
+            border: none;
+            color: var(--muted);
+            cursor: pointer;
+            font-size: 1.25rem;
+            padding: 0.25rem 0.5rem;
+            border-radius: var(--radius-sm);
+            transition: color 0.2s ease, background-color 0.2s ease;
+        }
+
+        .terminal-btn:hover {
+            color: var(--text);
+            background: var(--bg-card-hover);
+        }
+
+        .terminal-container {
+            flex: 1;
+            background: #0d1117;
+            border: 1px solid var(--border);
+            border-radius: 0 0 var(--radius-sm) var(--radius-sm);
+            overflow: hidden;
+        }
+
+        .terminal-container .xterm {
+            height: 100%;
+            padding: 0.5rem;
+        }
+
+        /* Minimized terminals tray */
+        .terminals-tray {
+            display: none;
+            position: fixed;
+            bottom: 1.5rem;
+            right: 1.5rem;
+            flex-direction: column;
+            gap: 0.5rem;
+            z-index: 150;
+        }
+
+        .terminals-tray.active {
+            display: flex;
+        }
+
+        .terminal-minimized {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 0.625rem 1rem;
+            cursor: pointer;
+            box-shadow: var(--shadow-lg);
+            transition: background-color 0.2s ease, border-color 0.2s ease, transform 0.2s ease;
+        }
+
+        .terminal-minimized:hover {
+            background: var(--bg-card-hover);
+            border-color: var(--primary);
+            transform: translateX(-4px);
+        }
+
+        .terminal-minimized-dot {
+            width: 10px;
+            height: 10px;
+            background: var(--success);
+            border-radius: 50%;
+            animation: pulse-dot 1.5s ease-in-out infinite;
+        }
+
+        .terminal-minimized-text {
+            font-weight: 500;
+            font-size: 0.875rem;
+            flex: 1;
+        }
+
+        .terminal-minimized-close {
+            color: var(--muted);
+            font-size: 1rem;
+            padding: 0 0.25rem;
+            border-radius: 4px;
+            transition: color 0.2s ease, background-color 0.2s ease;
+        }
+
+        .terminal-minimized-close:hover {
+            color: var(--error);
+            background: rgba(239, 68, 68, 0.1);
+        }
+
+        .modal-messages {
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+            max-height: 250px;
+            overflow-y: auto;
+        }
+
+        .modal-message {
+            background: var(--bg);
+            padding: 0.75rem;
+            border-radius: var(--radius-sm);
+            border-left: 2px solid var(--border);
+        }
+
+        .modal-message.unread {
+            border-left-color: var(--primary);
+            background: rgba(139, 92, 246, 0.05);
+        }
+
+        .modal-message-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 0.375rem;
+        }
+
+        .modal-message-from {
+            font-weight: 500;
+            font-size: 0.8125rem;
+            color: var(--text);
+        }
+
+        .modal-message-time {
+            font-size: 0.6875rem;
+            color: var(--muted);
+        }
+
+        .modal-message-preview {
+            font-size: 0.8125rem;
+            color: var(--text-secondary);
+            line-height: 1.5;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+
+        /* Context Window Visualizer */
+        .context-window-section {
+            margin-top: 1.25rem;
+            padding-top: 1.25rem;
+            border-top: 1px solid var(--border);
+        }
+
+        .context-window-header {
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--muted);
+            margin-bottom: 0.75rem;
+            font-weight: 600;
+        }
+
+        .context-gauge {
+            width: 100%;
+            height: 20px;
+            background: var(--bg);
+            border-radius: 10px;
+            overflow: hidden;
+            display: flex;
+            border: 1px solid var(--border);
+        }
+
+        .context-gauge-segment {
+            height: 100%;
+            transition: width 0.3s ease;
+            min-width: 0;
+        }
+
+        .context-gauge-segment.facts {
+            background: var(--primary);
+        }
+
+        .context-gauge-segment.messages {
+            background: var(--secondary);
+        }
+
+        .context-gauge-segment.system {
+            background: var(--muted);
+        }
+
+        .context-summary {
+            margin-top: 0.5rem;
+            font-size: 0.8125rem;
+            color: var(--text-secondary);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .context-summary-tokens {
+            font-family: 'JetBrains Mono', monospace;
+            font-weight: 500;
+            color: var(--text);
+        }
+
+        .context-summary-pct {
+            font-size: 0.75rem;
+            color: var(--muted);
+        }
+
+        .context-legend {
+            display: flex;
+            gap: 1rem;
+            margin-top: 0.625rem;
+            flex-wrap: wrap;
+        }
+
+        .context-legend-item {
+            display: flex;
+            align-items: center;
+            gap: 0.375rem;
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+        }
+
+        .context-legend-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            flex-shrink: 0;
+        }
+
+        .context-legend-dot.facts { background: var(--primary); }
+        .context-legend-dot.messages { background: var(--secondary); }
+        .context-legend-dot.system { background: var(--muted); }
+
+        .context-items-list {
+            margin-top: 0.75rem;
+            max-height: 200px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 0.375rem;
+        }
+
+        .context-item {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 0.75rem;
+            padding: 0.375rem 0;
+        }
+
+        .context-item-type {
+            font-size: 0.625rem;
+            text-transform: uppercase;
+            font-weight: 600;
+            letter-spacing: 0.03em;
+            width: 48px;
+            flex-shrink: 0;
+            text-align: center;
+            padding: 0.125rem 0.25rem;
+            border-radius: 3px;
+        }
+
+        .context-item-type.fact {
+            color: var(--primary-light);
+            background: rgba(139, 92, 246, 0.15);
+        }
+
+        .context-item-type.message {
+            color: var(--secondary-light);
+            background: rgba(6, 182, 212, 0.15);
+        }
+
+        .context-item-bar-container {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .context-item-bar {
+            height: 4px;
+            border-radius: 2px;
+            transition: width 0.3s ease;
+        }
+
+        .context-item-bar.fact { background: var(--primary); }
+        .context-item-bar.message { background: var(--secondary); }
+
+        .context-item-preview {
+            flex: 2;
+            min-width: 0;
+            color: var(--text-secondary);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .context-item-tokens {
+            flex-shrink: 0;
+            color: var(--muted);
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.6875rem;
+        }
+
+        .context-loading {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            color: var(--muted);
+            font-size: 0.8125rem;
+            padding: 0.5rem 0;
+        }
+
+        .context-loading .spinner {
+            width: 16px;
+            height: 16px;
+        }
+
+        /* Loading */
+        .loading {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 4rem;
+            color: var(--muted);
+            gap: 0.75rem;
+        }
+
+        .spinner {
+            width: 24px;
+            height: 24px;
+            border: 2px solid var(--border);
+            border-top-color: var(--primary);
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* Responsive */
+        @media (min-width: 1200px) {
+            .cards-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+
+        @media (min-width: 1600px) {
+            .cards-grid {
+                grid-template-columns: repeat(3, 1fr);
+            }
+        }
+
+        @media (max-width: 1024px) {
+            .sidebar {
+                width: 240px;
+            }
+            .main {
+                margin-left: 240px;
+                max-width: calc(100vw - 240px);
+            }
+            .session-panel {
+                width: 280px;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .sidebar {
+                display: none;
+            }
+            .main {
+                margin-left: 0;
+                max-width: 100vw;
+            }
+            .map-layout {
+                flex-direction: column;
+            }
+            .session-panel {
+                width: 100%;
+            }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            *, *::before, *::after {
+                animation-duration: 0.01ms !important;
+                animation-iteration-count: 1 !important;
+                transition-duration: 0.01ms !important;
+            }
+        }
+
+        /* Focus Visible */
+        *:focus-visible {
+            outline: 2px solid var(--primary);
+            outline-offset: 2px;
+        }
+
+        .btn:focus-visible,
+        .nav-item:focus-visible {
+            outline: 2px solid var(--primary);
+            outline-offset: 2px;
+            box-shadow: 0 0 0 4px rgba(139, 92, 246, 0.2);
+        }
+
+        /* Toast Notifications */
+        #toast-container {
+            position: fixed;
+            top: 1.5rem;
+            right: 1.5rem;
+            z-index: 300;
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+            pointer-events: none;
+        }
+
+        .toast {
+            pointer-events: auto;
+            padding: 0.75rem 1.25rem;
+            border-radius: var(--radius-sm);
+            font-size: 0.875rem;
+            font-weight: 500;
+            color: white;
+            box-shadow: var(--shadow-lg);
+            animation: toast-in 0.3s ease forwards;
+            max-width: 360px;
+        }
+
+        .toast.removing {
+            animation: toast-out 0.3s ease forwards;
+        }
+
+        .toast-success { background: var(--success); }
+        .toast-error { background: var(--error); }
+        .toast-warning { background: var(--warning); color: #1a1a2e; }
+        .toast-info { background: var(--primary); }
+
+        @keyframes toast-in {
+            from { opacity: 0; transform: translateX(100%); }
+            to { opacity: 1; transform: translateX(0); }
+        }
+
+        @keyframes toast-out {
+            from { opacity: 1; transform: translateX(0); }
+            to { opacity: 0; transform: translateX(100%); }
+        }
+
+        /* Scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: var(--border);
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: var(--border-light);
+        }
+
+        /* Light Theme */
+        html.light-theme {
+            --primary: #7C3AED;
+            --primary-light: #8B5CF6;
+            --primary-dark: #6D28D9;
+            --secondary: #0891B2;
+            --secondary-light: #06B6D4;
+            --success: #059669;
+            --success-light: #10B981;
+            --warning: #D97706;
+            --warning-light: #F59E0B;
+            --error: #DC2626;
+            --muted: #64748B;
+            --muted-light: #94A3B8;
+            --text: #0F172A;
+            --text-secondary: #475569;
+            --bg: #F8FAFC;
+            --bg-card: #FFFFFF;
+            --bg-card-hover: #F1F5F9;
+            --border: #E2E8F0;
+            --border-light: #CBD5E1;
+            --glass: rgba(255, 255, 255, 0.9);
+            --glass-border: rgba(148, 163, 184, 0.2);
+            --shadow: 0 1px 3px rgba(0, 0, 0, 0.1), 0 1px 2px rgba(0, 0, 0, 0.06);
+            --shadow-lg: 0 4px 6px rgba(0, 0, 0, 0.07), 0 2px 4px rgba(0, 0, 0, 0.06);
+        }
+
+        html.light-theme .sidebar {
+            background: linear-gradient(180deg, var(--bg-card) 0%, var(--bg) 100%);
+        }
+
+        html.light-theme .toast-warning { color: white; }
+
+        /* Compact Density */
+        html.compact-density .instance-card,
+        html.compact-density .message-card,
+        html.compact-density .fact-card {
+            padding: 0.875rem;
+        }
+        html.compact-density .cards-grid {
+            gap: 0.625rem;
+        }
+
+        /* Analytics View */
+        .analytics-metrics {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .metric-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 1.25rem;
+        }
+
+        .metric-value {
+            font-size: 2rem;
+            font-weight: 700;
+            font-family: 'JetBrains Mono', monospace;
+            color: var(--text);
+        }
+
+        .metric-label {
+            font-size: 0.8125rem;
+            color: var(--muted);
+            margin-top: 0.25rem;
+        }
+
+        .metric-trend {
+            font-size: 0.75rem;
+            font-weight: 600;
+            margin-top: 0.5rem;
+        }
+
+        .metric-trend.up { color: var(--success); }
+        .metric-trend.down { color: var(--error); }
+        .metric-trend.flat { color: var(--muted); }
+
+        .analytics-charts {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+        }
+
+        .chart-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 1.25rem;
+        }
+
+        .chart-title {
+            font-weight: 600;
+            font-size: 0.9375rem;
+            margin-bottom: 1rem;
+            color: var(--text);
+        }
+
+        .chart-container {
+            position: relative;
+            height: 250px;
+        }
+
+        .time-range-selector {
+            display: flex;
+            gap: 0.5rem;
+            margin-bottom: 1.5rem;
+        }
+
+        /* Graph View */
+        .graph-controls {
+            display: flex;
+            gap: 0.75rem;
+            margin-bottom: 1rem;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .graph-canvas {
+            width: 100%;
+            height: calc(100vh - 14rem);
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            position: relative;
+        }
+
+        .graph-legend {
+            position: absolute;
+            bottom: 1rem;
+            left: 1rem;
+            background: var(--glass);
+            border: 1px solid var(--glass-border);
+            border-radius: var(--radius-sm);
+            padding: 0.75rem;
+            font-size: 0.75rem;
+            max-height: 200px;
+            overflow-y: auto;
+            z-index: 10;
+        }
+
+        .graph-legend-item {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            margin-bottom: 0.25rem;
+        }
+
+        .graph-legend-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            flex-shrink: 0;
+        }
+
+        /* Command Palette */
+        .palette-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.6);
+            backdrop-filter: blur(4px);
+            z-index: 250;
+            justify-content: center;
+            padding-top: 15vh;
+        }
+
+        .palette-overlay.active {
+            display: flex;
+        }
+
+        .palette {
+            width: 560px;
+            max-height: 480px;
+            background: var(--bg-card);
+            border: 1px solid var(--border-light);
+            border-radius: var(--radius);
+            box-shadow: var(--shadow-lg);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            align-self: flex-start;
+        }
+
+        .palette-input-wrapper {
+            display: flex;
+            align-items: center;
+            padding: 0.75rem 1rem;
+            border-bottom: 1px solid var(--border);
+            gap: 0.5rem;
+        }
+
+        .palette-input-wrapper .search-icon {
+            position: static;
+            transform: none;
+            color: var(--muted);
+        }
+
+        .palette-input {
+            flex: 1;
+            background: none;
+            border: none;
+            outline: none;
+            color: var(--text);
+            font-size: 0.9375rem;
+            font-family: inherit;
+        }
+
+        .palette-input::placeholder {
+            color: var(--muted);
+        }
+
+        .palette-results {
+            flex: 1;
+            overflow-y: auto;
+            padding: 0.5rem;
+        }
+
+        .palette-section {
+            font-size: 0.6875rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--muted);
+            font-weight: 600;
+            padding: 0.5rem 0.75rem 0.25rem;
+        }
+
+        .palette-item {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            padding: 0.625rem 0.75rem;
+            border-radius: var(--radius-sm);
+            cursor: pointer;
+            color: var(--text);
+            font-size: 0.875rem;
+        }
+
+        .palette-item:hover,
+        .palette-item.selected {
+            background: var(--bg-card-hover);
+        }
+
+        .palette-item-icon {
+            width: 20px;
+            text-align: center;
+            font-size: 1rem;
+        }
+
+        .palette-item-label {
+            flex: 1;
+        }
+
+        .palette-item-hint {
+            font-size: 0.75rem;
+            color: var(--muted);
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        .palette-footer {
+            padding: 0.5rem 1rem;
+            border-top: 1px solid var(--border);
+            display: flex;
+            gap: 1rem;
+            font-size: 0.6875rem;
+            color: var(--muted);
+        }
+
+        .palette-footer kbd {
+            display: inline-block;
+            padding: 0.125rem 0.375rem;
+            background: var(--bg);
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.625rem;
+        }
+
+        /* Settings Modal */
+        .settings-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.75);
+            backdrop-filter: blur(4px);
+            z-index: 200;
+            align-items: center;
+            justify-content: center;
+            padding: 2rem;
+        }
+
+        .settings-overlay.active {
+            display: flex;
+        }
+
+        .settings-modal {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-lg);
+            max-width: 560px;
+            width: 100%;
+            max-height: 85vh;
+            overflow-y: auto;
+            box-shadow: var(--shadow-lg);
+        }
+
+        .settings-section {
+            padding: 1.25rem 1.5rem;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .settings-section:last-child {
+            border-bottom: none;
+        }
+
+        .settings-section-title {
+            font-weight: 600;
+            font-size: 0.9375rem;
+            margin-bottom: 1rem;
+            color: var(--text);
+        }
+
+        .settings-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.625rem 0;
+        }
+
+        .settings-label {
+            font-size: 0.875rem;
+            color: var(--text-secondary);
+        }
+
+        .settings-toggle {
+            position: relative;
+            width: 44px;
+            height: 24px;
+            background: var(--border);
+            border-radius: 12px;
+            cursor: pointer;
+            transition: background 0.2s;
+            border: none;
+        }
+
+        .settings-toggle.active {
+            background: var(--primary);
+        }
+
+        .settings-toggle::after {
+            content: '';
+            position: absolute;
+            top: 2px;
+            left: 2px;
+            width: 20px;
+            height: 20px;
+            background: white;
+            border-radius: 50%;
+            transition: transform 0.2s;
+        }
+
+        .settings-toggle.active::after {
+            transform: translateX(20px);
+        }
+
+        .settings-input {
+            width: 80px;
+            padding: 0.375rem 0.5rem;
+            background: var(--bg);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
+            color: var(--text);
+            font-size: 0.875rem;
+            font-family: inherit;
+            text-align: center;
+        }
+
+        .settings-input:focus {
+            outline: none;
+            border-color: var(--primary);
+        }
+
+        .settings-select {
+            padding: 0.375rem 0.75rem;
+            background: var(--bg);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
+            color: var(--text);
+            font-size: 0.875rem;
+            font-family: inherit;
+        }
+
+        .settings-select:focus {
+            outline: none;
+            border-color: var(--primary);
+        }
+
+        .import-drop-zone {
+            border: 2px dashed var(--border-light);
+            border-radius: var(--radius-sm);
+            padding: 1.5rem;
+            text-align: center;
+            color: var(--muted);
+            cursor: pointer;
+            transition: border-color 0.2s, background 0.2s;
+            margin-top: 0.75rem;
+        }
+
+        .import-drop-zone:hover,
+        .import-drop-zone.dragover {
+            border-color: var(--primary);
+            background: rgba(139, 92, 246, 0.05);
+        }
+
+        .import-drop-zone input[type="file"] {
+            display: none;
+        }
+
+        @media (max-width: 900px) {
+            .analytics-metrics { grid-template-columns: repeat(2, 1fr); }
+            .analytics-charts { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+    <div class="app">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <div class="logo">
+                <div class="logo-icon">C</div>
+                <span class="logo-text">Clauder</span>
+            </div>
+
+            <nav class="nav">
+                <div class="nav-item active" data-view="map" tabindex="0" role="button">
+                    <span class="nav-icon">&#11042;</span>
+                    <span>Map</span>
+                    <span class="nav-badge" id="nav-map-count">0</span>
+                </div>
+                <div class="nav-item" data-view="instances" tabindex="0" role="button">
+                    <span class="nav-icon">&#9673;</span>
+                    <span>Instances</span>
+                    <span class="nav-badge" id="nav-instances-count">0</span>
+                </div>
+                <div class="nav-item" data-view="messages" tabindex="0" role="button">
+                    <span class="nav-icon">&#9993;</span>
+                    <span>Messages</span>
+                    <span class="nav-badge warning" id="nav-unread-count">0</span>
+                </div>
+                <div class="nav-item" data-view="facts" tabindex="0" role="button">
+                    <span class="nav-icon">&#9733;</span>
+                    <span>Facts</span>
+                    <span class="nav-badge" id="nav-facts-count">0</span>
+                </div>
+                <div class="nav-item" data-view="analytics" tabindex="0" role="button">
+                    <span class="nav-icon">&#9636;</span>
+                    <span>Analytics</span>
+                </div>
+                <div class="nav-item" data-view="graph" tabindex="0" role="button">
+                    <span class="nav-icon">&#9694;</span>
+                    <span>Graph</span>
+                </div>
+                <div class="nav-item" data-view="settings" tabindex="0" role="button" onclick="event.stopPropagation(); openSettings();">
+                    <span class="nav-icon">&#9881;</span>
+                    <span>Settings</span>
+                </div>
+            </nav>
+
+            <div class="stats-section">
+                <div class="stats-title">Quick Stats</div>
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-value" id="stat-instances">-</div>
+                        <div class="stat-label">Active</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value" id="stat-unread">-</div>
+                        <div class="stat-label">Unread</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value" id="stat-facts">-</div>
+                        <div class="stat-label">Facts</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value" id="stat-local">-</div>
+                        <div class="stat-label">Local</div>
+                    </div>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main">
+            <!-- Map View -->
+            <div class="view" id="map-view">
+                <div class="map-layout">
+                    <div class="hex-container">
+                        <div class="hex-grid" id="hex-grid">
+                            <div class="loading"><div class="spinner"></div> Loading map...</div>
+                        </div>
+                    </div>
+                    <div class="session-panel">
+                        <div class="session-header">
+                            <div>
+                                <div class="session-title">All Sessions</div>
+                                <div class="session-stats" id="session-stats">0 sessions, 0 working</div>
+                            </div>
+                            <button class="btn btn-primary btn-sm" onclick="showLaunchModal()">+ New</button>
+                        </div>
+                        <div class="session-list" id="session-list">
+                            <!-- Session cards rendered by JS -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Instances View -->
+            <div class="view" id="instances-view" style="display: none;">
+                <div class="page-header">
+                    <div>
+                        <h1 class="page-title">Instances</h1>
+                        <p class="page-subtitle">Active Claude Code sessions</p>
+                    </div>
+                    <div class="header-actions">
+                        <button class="btn btn-secondary" onclick="fetchData()">
+                            <span>&#8635;</span> Refresh
+                        </button>
+                    </div>
+                </div>
+
+                <div class="filter-bar">
+                    <div class="search-box">
+                        <span class="search-icon">&#128269;</span>
+                        <input type="text" id="instances-search" placeholder="Search instances..." oninput="filterInstances()">
+                    </div>
+                    <div class="filter-group">
+                        <button class="filter-btn active" data-filter="all" onclick="setInstanceFilter('all')">All</button>
+                        <button class="filter-btn" data-filter="active" onclick="setInstanceFilter('active')">Active</button>
+                        <button class="filter-btn" data-filter="idle" onclick="setInstanceFilter('idle')">Idle</button>
+                        <button class="filter-btn" data-filter="leader" onclick="setInstanceFilter('leader')">Leader</button>
+                    </div>
+                </div>
+
+                <div class="cards-grid" id="instances-content">
+                    <div class="loading"><div class="spinner"></div> Loading instances...</div>
+                </div>
+            </div>
+
+            <!-- Messages View -->
+            <div class="view" id="messages-view" style="display: none;">
+                <div class="page-header">
+                    <div>
+                        <h1 class="page-title">Messages</h1>
+                        <p class="page-subtitle">Communication history between instances</p>
+                    </div>
+                    <div class="header-actions">
+                        <button class="btn btn-secondary" onclick="fetchData()">
+                            <span>&#8635;</span> Refresh
+                        </button>
+                    </div>
+                </div>
+
+                <div class="filter-bar">
+                    <div class="search-box">
+                        <span class="search-icon">&#128269;</span>
+                        <input type="text" id="messages-search" placeholder="Search messages..." oninput="filterMessages()">
+                    </div>
+                    <div class="filter-group">
+                        <button class="filter-btn active" data-filter="all" onclick="setMessageFilter('all')">All</button>
+                        <button class="filter-btn" data-filter="unread" onclick="setMessageFilter('unread')">Unread</button>
+                        <button class="filter-btn" data-filter="read" onclick="setMessageFilter('read')">Read</button>
+                    </div>
+                    <select class="filter-select" id="messages-from" onchange="filterMessages()">
+                        <option value="">From: All</option>
+                    </select>
+                    <select class="filter-select" id="messages-to" onchange="filterMessages()">
+                        <option value="">To: All</option>
+                    </select>
+                </div>
+
+                <div class="cards-grid" id="messages-content">
+                    <div class="loading"><div class="spinner"></div> Loading messages...</div>
+                </div>
+            </div>
+
+            <!-- Facts View -->
+            <div class="view" id="facts-view" style="display: none;">
+                <div class="page-header">
+                    <div>
+                        <h1 class="page-title">Facts</h1>
+                        <p class="page-subtitle">Stored knowledge and context</p>
+                    </div>
+                    <div class="header-actions">
+                        <button class="btn btn-secondary" id="select-mode-btn" onclick="toggleSelectMode()">
+                            <span>&#9745;</span> Select
+                        </button>
+                        <button class="btn btn-primary" onclick="showCreateFactModal()">
+                            <span>+</span> Add Fact
+                        </button>
+                        <button class="btn btn-secondary" onclick="fetchData()">
+                            <span>&#8635;</span> Refresh
+                        </button>
+                    </div>
+                </div>
+
+                <div id="fact-stats-banner" class="fact-stats-banner" style="display: none;">
+                    <div class="fact-stats-summary" onclick="toggleStatsExpand()">
+                        <div class="fact-stats-item">
+                            <span class="fact-stats-value" id="fs-active">-</span>
+                            <span class="fact-stats-label">Active Facts</span>
+                        </div>
+                        <div class="fact-stats-separator"></div>
+                        <div class="fact-stats-item">
+                            <span class="fact-stats-value" id="fs-size">-</span>
+                            <span class="fact-stats-label">Total Size</span>
+                        </div>
+                        <div class="fact-stats-separator"></div>
+                        <div class="fact-stats-item">
+                            <span class="fact-stats-value" id="fs-dirs">-</span>
+                            <span class="fact-stats-label">Directories</span>
+                        </div>
+                        <div class="fact-stats-separator"></div>
+                        <div class="fact-stats-item">
+                            <span class="fact-stats-value" id="fs-deleted">-</span>
+                            <span class="fact-stats-label">Deleted</span>
+                        </div>
+                        <button class="btn-danger" id="purge-btn" style="display: none; margin-left: 0.5rem;" onclick="event.stopPropagation(); purgeDeletedFacts()">Purge</button>
+                        <span class="fact-stats-expand" id="stats-expand-icon">&#9660;</span>
+                    </div>
+                    <div class="fact-stats-details" id="fact-stats-details">
+                        <table class="fact-stats-table">
+                            <thead>
+                                <tr>
+                                    <th>Directory</th>
+                                    <th>Facts</th>
+                                    <th>Size</th>
+                                    <th>Oldest</th>
+                                    <th>Newest</th>
+                                </tr>
+                            </thead>
+                            <tbody id="fact-stats-table-body"></tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div class="filter-bar">
+                    <div class="search-box">
+                        <span class="search-icon">&#128269;</span>
+                        <input type="text" id="facts-search" placeholder="Search facts..." oninput="filterFacts()">
+                    </div>
+                    <div class="filter-group">
+                        <button class="filter-btn active" data-filter="all" onclick="setFactFilter('all')">All</button>
+                        <button class="filter-btn" data-filter="local" onclick="setFactFilter('local')">Local</button>
+                        <button class="filter-btn" data-filter="global" onclick="setFactFilter('global')">Global</button>
+                    </div>
+                    <select class="filter-select" id="facts-tag" onchange="filterFacts()">
+                        <option value="">Tag: All</option>
+                    </select>
+                    <select class="filter-select" id="facts-source" onchange="filterFacts()">
+                        <option value="">Source: All</option>
+                    </select>
+                </div>
+
+                <div class="cards-grid" id="facts-content">
+                    <div class="loading"><div class="spinner"></div> Loading facts...</div>
+                </div>
+            </div>
+
+            <!-- Analytics View -->
+            <div class="view" id="analytics-view" style="display: none;">
+                <div class="page-header">
+                    <div>
+                        <h1 class="page-title">Analytics</h1>
+                        <p class="page-subtitle">Usage trends and insights</p>
+                    </div>
+                    <div class="header-actions">
+                        <div class="time-range-selector">
+                            <button class="filter-btn" data-range="7d" onclick="setAnalyticsRange('7d')">7d</button>
+                            <button class="filter-btn active" data-range="30d" onclick="setAnalyticsRange('30d')">30d</button>
+                            <button class="filter-btn" data-range="90d" onclick="setAnalyticsRange('90d')">90d</button>
+                            <button class="filter-btn" data-range="all" onclick="setAnalyticsRange('all')">All</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="analytics-metrics" id="analytics-metrics">
+                    <div class="metric-card">
+                        <div class="metric-value" id="metric-facts">-</div>
+                        <div class="metric-label">Total Facts</div>
+                        <div class="metric-trend flat" id="metric-facts-trend">-</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-value" id="metric-messages">-</div>
+                        <div class="metric-label">Total Messages</div>
+                        <div class="metric-trend flat" id="metric-messages-trend">-</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-value" id="metric-sessions">-</div>
+                        <div class="metric-label">Total Sessions</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-value" id="metric-week-facts">-</div>
+                        <div class="metric-label">Facts This Week</div>
+                    </div>
+                </div>
+
+                <div class="analytics-charts">
+                    <div class="chart-card">
+                        <div class="chart-title">Fact Growth</div>
+                        <div class="chart-container"><canvas id="chart-facts"></canvas></div>
+                    </div>
+                    <div class="chart-card">
+                        <div class="chart-title">Message Volume</div>
+                        <div class="chart-container"><canvas id="chart-messages"></canvas></div>
+                    </div>
+                    <div class="chart-card">
+                        <div class="chart-title">Session Activity</div>
+                        <div class="chart-container"><canvas id="chart-sessions"></canvas></div>
+                    </div>
+                    <div class="chart-card">
+                        <div class="chart-title">Facts by Directory</div>
+                        <div class="chart-container"><canvas id="chart-dirs"></canvas></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Graph View -->
+            <div class="view" id="graph-view" style="display: none;">
+                <div class="page-header">
+                    <div>
+                        <h1 class="page-title">Knowledge Graph</h1>
+                        <p class="page-subtitle">Fact relationships by shared tags</p>
+                    </div>
+                    <div class="header-actions">
+                        <button class="btn btn-secondary" onclick="loadGraph()">
+                            <span>&#8635;</span> Reset View
+                        </button>
+                    </div>
+                </div>
+
+                <div class="graph-controls">
+                    <select class="filter-select" id="graph-dir-filter" onchange="filterGraph()">
+                        <option value="">Directory: All</option>
+                    </select>
+                    <select class="filter-select" id="graph-tag-filter" onchange="filterGraph()">
+                        <option value="">Tag: All</option>
+                    </select>
+                </div>
+
+                <div class="graph-canvas" id="graph-canvas">
+                    <div id="graph-legend" class="graph-legend" style="display: none;"></div>
+                </div>
+            </div>
+
+            <!-- Bulk Action Bar -->
+            <div class="bulk-action-bar" id="bulk-action-bar">
+                <span class="bulk-count" id="bulk-count">0 selected</span>
+                <button class="btn btn-secondary" onclick="selectAllFacts()">Select All</button>
+                <button class="btn btn-secondary" onclick="deselectAllFacts()">Deselect All</button>
+                <button class="btn-danger" onclick="bulkDeleteSelectedFacts()">Delete Selected</button>
+            </div>
+        </main>
+    </div>
+
+    <!-- Modal -->
+    <div class="modal-overlay" id="modal" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+        <div class="modal">
+            <div class="modal-header">
+                <span class="modal-title" id="modal-title">Details</span>
+                <button class="modal-close" onclick="closeModal()" aria-label="Close dialog">&times;</button>
+            </div>
+            <div class="modal-body" id="modal-body"></div>
+        </div>
+    </div>
+
+    <!-- Launch Modal -->
+    <div class="modal-overlay" id="launch-modal" role="dialog" aria-modal="true" aria-labelledby="launch-modal-title">
+        <div class="modal">
+            <div class="modal-header">
+                <span class="modal-title" id="launch-modal-title">Launch New Session</span>
+                <button class="modal-close" onclick="closeLaunchModal()" aria-label="Close dialog">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="modal-field">
+                    <div class="modal-label">Directory</div>
+                    <input type="text" id="launch-dir" class="launch-input" placeholder="Enter directory path...">
+                </div>
+                <div class="modal-field">
+                    <div class="modal-label">Quick Launch</div>
+                    <div class="quick-launch-list" id="quick-launch-list">
+                        <!-- Populated by JS with recent directories -->
+                    </div>
+                </div>
+                <div class="modal-actions">
+                    <button class="btn btn-secondary" onclick="closeLaunchModal()">Cancel</button>
+                    <button class="btn btn-primary" onclick="launchSession()">Launch</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Terminal Overlay -->
+    <div class="terminal-overlay" id="terminal-overlay">
+        <div class="terminal-wrapper">
+            <div class="terminal-header">
+                <div class="terminal-title">
+                    <span class="terminal-title-dot"></span>
+                    <span id="terminal-dir">Claude Code</span>
+                </div>
+                <div class="terminal-actions">
+                    <button class="terminal-btn" onclick="minimizeTerminal()" title="Minimize">&#8722;</button>
+                    <button class="terminal-btn" onclick="closeTerminal()" title="Close">&times;</button>
+                </div>
+            </div>
+            <div class="terminal-container" id="terminal-container"></div>
+        </div>
+    </div>
+
+    <!-- Minimized Terminals Tray -->
+    <div class="terminals-tray" id="terminals-tray">
+        <!-- Populated dynamically -->
+    </div>
+
+    <!-- Toast Notifications -->
+    <div id="toast-container"></div>
+
+    <!-- Command Palette -->
+    <div class="palette-overlay" id="palette-overlay">
+        <div class="palette">
+            <div class="palette-input-wrapper">
+                <span class="search-icon">&#128269;</span>
+                <input type="text" class="palette-input" id="palette-input" placeholder="Type a command or search...">
+            </div>
+            <div class="palette-results" id="palette-results"></div>
+            <div class="palette-footer">
+                <span><kbd>&#8593;</kbd><kbd>&#8595;</kbd> navigate</span>
+                <span><kbd>Enter</kbd> select</span>
+                <span><kbd>Esc</kbd> close</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Settings Overlay -->
+    <div class="settings-overlay" id="settings-overlay">
+        <div class="settings-modal">
+            <div class="modal-header">
+                <span class="modal-title">Settings</span>
+                <button class="modal-close" onclick="closeSettings()" aria-label="Close">&times;</button>
+            </div>
+            <div class="settings-section">
+                <div class="settings-section-title">Appearance</div>
+                <div class="settings-row">
+                    <span class="settings-label">Dark Theme</span>
+                    <button class="settings-toggle active" id="settings-theme-toggle" onclick="toggleThemeSetting()"></button>
+                </div>
+                <div class="settings-row">
+                    <span class="settings-label">Compact Density</span>
+                    <button class="settings-toggle" id="settings-compact-toggle" onclick="toggleCompactSetting()"></button>
+                </div>
+            </div>
+            <div class="settings-section">
+                <div class="settings-section-title">Behavior</div>
+                <div class="settings-row">
+                    <span class="settings-label">Auto-refresh interval (seconds)</span>
+                    <input type="number" class="settings-input" id="settings-refresh" min="5" max="300" value="{{.RefreshInterval}}" onchange="saveRefreshSetting()">
+                </div>
+                <div class="settings-row">
+                    <span class="settings-label">Default view</span>
+                    <select class="settings-select" id="settings-default-view" onchange="saveDefaultViewSetting()">
+                        <option value="map">Map</option>
+                        <option value="instances">Instances</option>
+                        <option value="messages">Messages</option>
+                        <option value="facts">Facts</option>
+                        <option value="analytics">Analytics</option>
+                        <option value="graph">Graph</option>
+                    </select>
+                </div>
+            </div>
+            <div class="settings-section">
+                <div class="settings-section-title">Data Management</div>
+                <div class="settings-row">
+                    <span class="settings-label">Export facts</span>
+                    <div style="display: flex; gap: 0.5rem;">
+                        <button class="btn btn-secondary btn-sm" onclick="exportFactsJSON()">JSON</button>
+                        <button class="btn btn-secondary btn-sm" onclick="exportFactsCSV()">CSV</button>
+                    </div>
+                </div>
+                <div class="settings-row" style="flex-direction: column; align-items: stretch;">
+                    <span class="settings-label" style="margin-bottom: 0.5rem;">Import facts</span>
+                    <div class="import-drop-zone" id="import-drop-zone">
+                        <div>Drop a JSON file here or click to browse</div>
+                        <div style="font-size: 0.75rem; margin-top: 0.25rem;">Format: {"facts": [{"content": "...", "tags": [...]}]}</div>
+                        <input type="file" id="import-file-input" accept=".json" onchange="handleImportFile(event)">
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const DEFAULT_REFRESH_INTERVAL = {{.RefreshInterval}} * 1000;
+        const WORK_DIR = '{{.WorkDir}}';
+        let currentRefreshInterval = DEFAULT_REFRESH_INTERVAL;
+
+        let currentView = 'map';
+        let allData = { instances: [], messages: [], facts: [], stats: {} };
+        let instanceFilter = 'all';
+        let messageFilter = 'all';
+        let factFilter = 'all';
+        let selectedInstanceIndex = -1;
+        let selectMode = false;
+        let selectedFacts = new Set();
+        let factStats = null;
+        let statsExpanded = false;
+        let factStatsFetchInFlight = false;
+        let lastFilteredInstances = [];
+        let lastFilteredMessages = [];
+        let lastQuickLaunchDirs = [];
+        let previousActiveElement = null;
+
+        // Terminal state - support up to 4 terminals
+        const MAX_TERMINALS = 4;
+        let terminals = [];
+        let activeTerminalId = null;
+        let terminalIdCounter = 0;
+
+        // Analytics state
+        let analyticsRange = '30d';
+        let chartInstances = {};
+
+        // Graph state
+        let cyInstance = null;
+        let graphData = null;
+
+        // Palette state
+        let paletteOpen = false;
+        let paletteSelectedIndex = 0;
+        let paletteItems = [];
+        let recentCommands = JSON.parse(localStorage.getItem('openclawder-recent-commands') || '[]');
+
+        // Settings
+        function loadSettings() {
+            try {
+                return JSON.parse(localStorage.getItem('openclawder-settings') || '{}');
+            } catch { return {}; }
+        }
+
+        function saveSettings(s) {
+            localStorage.setItem('openclawder-settings', JSON.stringify(s));
+        }
+
+        function applySettings() {
+            const s = loadSettings();
+            // Theme
+            document.documentElement.classList.toggle('light-theme', s.theme === 'light');
+            const themeToggle = document.getElementById('settings-theme-toggle');
+            if (themeToggle) themeToggle.classList.toggle('active', s.theme !== 'light');
+            // Compact
+            document.documentElement.classList.toggle('compact-density', !!s.compact);
+            const compactToggle = document.getElementById('settings-compact-toggle');
+            if (compactToggle) compactToggle.classList.toggle('active', !!s.compact);
+            // Refresh interval
+            if (s.refreshInterval && s.refreshInterval >= 5) {
+                currentRefreshInterval = s.refreshInterval * 1000;
+                const refreshInput = document.getElementById('settings-refresh');
+                if (refreshInput) refreshInput.value = s.refreshInterval;
+            }
+            // Default view
+            if (s.defaultView) {
+                const viewSelect = document.getElementById('settings-default-view');
+                if (viewSelect) viewSelect.value = s.defaultView;
+            }
+        }
+
+        function openSettings() {
+            applySettings();
+            document.getElementById('settings-overlay').classList.add('active');
+        }
+
+        function closeSettings() {
+            document.getElementById('settings-overlay').classList.remove('active');
+        }
+
+        function toggleThemeSetting() {
+            const s = loadSettings();
+            s.theme = s.theme === 'light' ? 'dark' : 'light';
+            saveSettings(s);
+            applySettings();
+        }
+
+        function toggleCompactSetting() {
+            const s = loadSettings();
+            s.compact = !s.compact;
+            saveSettings(s);
+            applySettings();
+        }
+
+        function saveRefreshSetting() {
+            const val = parseInt(document.getElementById('settings-refresh').value);
+            if (val >= 5 && val <= 300) {
+                const s = loadSettings();
+                s.refreshInterval = val;
+                saveSettings(s);
+                currentRefreshInterval = val * 1000;
+                startPolling();
+                showToast('Refresh interval updated', 'success');
+            }
+        }
+
+        function saveDefaultViewSetting() {
+            const s = loadSettings();
+            s.defaultView = document.getElementById('settings-default-view').value;
+            saveSettings(s);
+        }
+
+        // Export
+        function exportFactsJSON() {
+            const envelope = {
+                exportedAt: new Date().toISOString(),
+                sourceDir: WORK_DIR,
+                factCount: allData.facts.length,
+                facts: allData.facts
+            };
+            downloadFile(JSON.stringify(envelope, null, 2), 'openclawder-facts.json', 'application/json');
+            showToast('Facts exported as JSON', 'success');
+        }
+
+        function exportFactsCSV() {
+            const esc = v => '"' + String(v).replace(/"/g, '""') + '"';
+            const rows = ['id,content,tags,sourceDir,createdAt'];
+            allData.facts.forEach(f => {
+                rows.push([f.id, esc(f.content), esc((f.tags||[]).join(';')), esc(f.sourceDir), f.createdAt].join(','));
+            });
+            downloadFile(rows.join('\n'), 'openclawder-facts.csv', 'text/csv');
+            showToast('Facts exported as CSV', 'success');
+        }
+
+        function downloadFile(content, filename, mime) {
+            const blob = new Blob([content], { type: mime });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+
+        // Import
+        function handleImportFile(event) {
+            const file = event.target ? event.target.files[0] : event;
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = async (e) => {
+                try {
+                    const data = JSON.parse(e.target.result);
+                    let facts = data.facts || data;
+                    if (!Array.isArray(facts)) throw new Error('Invalid format');
+                    if (facts.length === 0) { showToast('No facts found in file', 'warning'); return; }
+                    if (!confirm(`Import ${facts.length} fact(s)?`)) return;
+                    const payload = facts.map(f => ({ content: f.content, tags: f.tags || [] }));
+                    const res = await fetch('/api/facts/import', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ facts: payload })
+                    });
+                    if (!res.ok) { const msg = await res.text(); throw new Error(msg); }
+                    const result = await res.json();
+                    showToast(`Imported ${result.imported} fact(s)`, 'success');
+                    fetchData();
+                } catch (err) {
+                    showToast('Import failed: ' + err.message, 'error');
+                }
+            };
+            reader.readAsText(file);
+        }
+
+        // Import drop zone
+        (function() {
+            const zone = document.getElementById('import-drop-zone');
+            const input = document.getElementById('import-file-input');
+            if (!zone || !input) return;
+            zone.addEventListener('click', () => input.click());
+            zone.addEventListener('dragover', (e) => { e.preventDefault(); zone.classList.add('dragover'); });
+            zone.addEventListener('dragleave', () => zone.classList.remove('dragover'));
+            zone.addEventListener('drop', (e) => {
+                e.preventDefault();
+                zone.classList.remove('dragover');
+                if (e.dataTransfer.files.length > 0) handleImportFile(e.dataTransfer.files[0]);
+            });
+        })();
+
+        // Navigation
+        document.querySelectorAll('.nav-item').forEach(item => {
+            item.addEventListener('click', () => {
+                const view = item.dataset.view;
+                switchView(view);
+            });
+            item.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    switchView(item.dataset.view);
+                }
+            });
+        });
+
+        function switchView(view) {
+            if (view === 'settings') { openSettings(); return; }
+            currentView = view;
+            document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+            const navEl = document.querySelector(`[data-view="${view}"]`);
+            if (navEl) navEl.classList.add('active');
+            document.querySelectorAll('.view').forEach(v => v.style.display = 'none');
+            const viewEl = document.getElementById(`${view}-view`);
+            if (viewEl) viewEl.style.display = 'block';
+            if (view === 'facts') fetchFactStats();
+            if (view !== 'facts' && selectMode) toggleSelectMode();
+            if (view === 'analytics') fetchAnalytics();
+            if (view === 'graph') loadGraph();
+        }
+
+        async function fetchData() {
+            try {
+                const response = await fetch('/api/data');
+                allData = await response.json();
+                updateStats();
+                renderCurrentView();
+                populateFilterOptions();
+                if (currentView === 'facts') fetchFactStats();
+            } catch (error) {
+                console.error('Failed to fetch data:', error);
+                const errorHtml = `
+                    <div class="empty-state">
+                        <div class="empty-icon">&#9888;</div>
+                        <div class="empty-title">Failed to load data</div>
+                        <div class="empty-description">
+                            Could not connect to the server.
+                            <a href="#" onclick="event.preventDefault(); fetchData();" style="color: var(--primary-light);">Retry</a>
+                        </div>
+                    </div>`;
+                ['instances-content', 'messages-content', 'facts-content'].forEach(id => {
+                    const el = document.getElementById(id);
+                    if (el && el.querySelector('.loading')) el.innerHTML = errorHtml;
+                });
+                const hexGrid = document.getElementById('hex-grid');
+                if (hexGrid && hexGrid.querySelector('.loading')) hexGrid.innerHTML = errorHtml;
+            }
+        }
+
+        function updateStats() {
+            document.getElementById('stat-instances').textContent = allData.stats.workingInstances || 0;
+            document.getElementById('stat-unread').textContent = allData.stats.unreadMessages;
+            document.getElementById('stat-facts').textContent = allData.stats.totalFacts;
+            document.getElementById('stat-local').textContent = allData.stats.localFacts;
+            document.getElementById('nav-map-count').textContent = allData.stats.totalInstances;
+            document.getElementById('nav-instances-count').textContent = allData.stats.totalInstances;
+            document.getElementById('nav-unread-count').textContent = allData.stats.unreadMessages;
+            document.getElementById('nav-facts-count').textContent = allData.stats.totalFacts;
+        }
+
+        function populateFilterOptions() {
+            // Message from/to options - use directory names
+            const fromSelect = document.getElementById('messages-from');
+            const toSelect = document.getElementById('messages-to');
+
+            // Get unique directories for from/to, mapping short dir to full for filtering
+            const fromDirs = [...new Set(allData.messages.map(m => m.shortFromDir))].filter(d => d && d !== 'unknown');
+            const toDirs = [...new Set(allData.messages.map(m => m.shortToDir))].filter(d => d && d !== 'unknown');
+
+            fromSelect.innerHTML = '<option value="">From: All</option>' +
+                fromDirs.map(d => `<option value="${d}">${d}</option>`).join('');
+            toSelect.innerHTML = '<option value="">To: All</option>' +
+                toDirs.map(d => `<option value="${d}">${d}</option>`).join('');
+
+            // Fact tags and sources
+            const tagSelect = document.getElementById('facts-tag');
+            const sourceSelect = document.getElementById('facts-source');
+            const tags = [...new Set(allData.facts.flatMap(f => f.tags))].filter(t => t);
+            const sources = [...new Set(allData.facts.map(f => f.shortDir))];
+
+            tagSelect.innerHTML = '<option value="">Tag: All</option>' +
+                tags.map(t => `<option value="${t}">${t}</option>`).join('');
+            sourceSelect.innerHTML = '<option value="">Source: All</option>' +
+                sources.map(s => `<option value="${s}">${s}</option>`).join('');
+        }
+
+        function renderCurrentView() {
+            switch (currentView) {
+                case 'map': renderMap(); break;
+                case 'instances': renderInstances(); break;
+                case 'messages': renderMessages(); break;
+                case 'facts': renderFacts(); break;
+                case 'analytics': /* fetched separately */ break;
+                case 'graph': /* fetched separately */ break;
+            }
+        }
+
+        // Map View
+        function renderMap() {
+            const hexGrid = document.getElementById('hex-grid');
+            const sessionList = document.getElementById('session-list');
+            const sessionStats = document.getElementById('session-stats');
+            const instances = allData.instances;
+
+            // Update stats
+            const working = instances.filter(i => i.isActive && !i.isIdle).length;
+            sessionStats.textContent = `${instances.length} sessions, ${working} working`;
+
+            if (instances.length === 0) {
+                hexGrid.innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-icon">&#11042;</div>
+                        <div class="empty-title">No active sessions</div>
+                        <div class="empty-description">Start a Claude Code session to see it here</div>
+                    </div>`;
+                sessionList.innerHTML = '';
+                return;
+            }
+
+            // Render hex grid in honeycomb pattern (diamond shape)
+            const n = instances.length;
+            let rowSizes = [];
+
+            // Create diamond-like distribution
+            if (n <= 3) {
+                rowSizes = [n];
+            } else if (n <= 5) {
+                rowSizes = [2, n - 2 > 0 ? n - 2 : 1, n > 4 ? 1 : 0].filter(x => x > 0);
+            } else if (n <= 7) {
+                rowSizes = [2, 3, 2];
+                if (n > 7) rowSizes = [2, 3, 2];
+            } else {
+                // For larger sets, build outward from center
+                const mid = Math.ceil(Math.sqrt(n));
+                let remaining = n;
+                let size = 1;
+                let growing = true;
+                while (remaining > 0) {
+                    const take = Math.min(size, remaining);
+                    rowSizes.push(take);
+                    remaining -= take;
+                    if (growing) {
+                        size++;
+                        if (size > mid) growing = false;
+                    } else {
+                        size = Math.max(1, size - 1);
+                    }
+                }
+            }
+
+            const rows = [];
+            let idx = 0;
+
+            rowSizes.forEach((rowSize, rowNum) => {
+                const rowInstances = instances.slice(idx, idx + rowSize);
+
+                const hexes = rowInstances.map((inst, i) => {
+                    const globalIdx = idx + i;
+                    const statusClass = inst.needsAttention ? 'needs-attention' : (inst.isActive ? 'active' : 'inactive');
+                    const statusText = inst.needsAttention ? 'Attention' : (inst.isActive ? 'Working' : 'Offline');
+                    const statusBadgeClass = inst.needsAttention ? 'attention' : (inst.isActive ? 'working' : 'offline');
+                    const badgeNum = globalIdx < 9 ? globalIdx + 1 : '';
+
+                    return `
+                        <div class="hex ${statusClass}" data-index="${globalIdx}" onclick="selectInstance(${globalIdx})">
+                            ${badgeNum ? `<div class="hex-badge">${badgeNum}</div>` : ''}
+                            <div class="hex-inner">
+                                <div class="hex-project">${escapeHtml(inst.projectName)}</div>
+                                <div class="hex-status ${statusBadgeClass}">${statusText}</div>
+                                <div class="hex-time">${inst.heartbeatAge}</div>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+
+                rows.push(`<div class="hex-row">${hexes}</div>`);
+                idx += rowSize;
+            });
+
+            hexGrid.innerHTML = rows.join('');
+
+            // Render session cards
+            sessionList.innerHTML = instances.map((inst, idx) => {
+                const dotClass = inst.needsAttention ? 'attention' : (inst.isActive ? 'working' : 'offline');
+                const isSelected = idx === selectedInstanceIndex;
+                const badgeNum = idx < 9 ? idx + 1 : '-';
+                const attentionText = inst.attentionReason || 'Needs attention';
+
+                return `
+                    <div class="session-card ${inst.needsAttention ? 'needs-attention' : ''} ${isSelected ? 'selected' : ''}"
+                         data-index="${idx}" onclick="selectInstance(${idx})">
+                        <div class="session-badge">${badgeNum}</div>
+                        <div class="session-dot ${dotClass}"></div>
+                        <div class="session-info">
+                            <div class="session-name">
+                                ${escapeHtml(inst.projectName)}
+                                ${inst.needsAttention ? `<span class="attention-label">${escapeHtml(attentionText)}</span>` : ''}
+                            </div>
+                            <div class="session-path">${escapeHtml(inst.shortDir)}</div>
+                        </div>
+                        <div class="session-time">${inst.heartbeatAge}</div>
+                    </div>
+                `;
+            }).join('');
+
+            // Highlight selected
+            updateSelection();
+        }
+
+        function selectInstance(index) {
+            selectedInstanceIndex = index;
+            updateSelection();
+            // Show instance details in modal
+            if (index >= 0 && index < allData.instances.length) {
+                showInstanceDetails(allData.instances[index]);
+            }
+        }
+
+        function updateSelection() {
+            // Update hex selection
+            document.querySelectorAll('.hex').forEach((hex, idx) => {
+                hex.classList.toggle('selected', idx === selectedInstanceIndex);
+            });
+            // Update card selection
+            document.querySelectorAll('.session-card').forEach((card, idx) => {
+                card.classList.toggle('selected', idx === selectedInstanceIndex);
+            });
+        }
+
+        // Instances
+        function setInstanceFilter(filter) {
+            instanceFilter = filter;
+            document.querySelectorAll('#instances-view .filter-btn').forEach(btn => {
+                btn.classList.toggle('active', btn.dataset.filter === filter);
+            });
+            renderInstances();
+        }
+
+        function filterInstances() {
+            renderInstances();
+        }
+
+        function renderInstances() {
+            const search = document.getElementById('instances-search').value.toLowerCase();
+            const content = document.getElementById('instances-content');
+
+            let filtered = allData.instances.filter(inst => {
+                if (search && !inst.id.toLowerCase().includes(search) && !inst.directory.toLowerCase().includes(search)) {
+                    return false;
+                }
+                switch (instanceFilter) {
+                    case 'active': return inst.isActive;
+                    case 'idle': return inst.isIdle;
+                    case 'leader': return inst.isLeader;
+                    default: return true;
+                }
+            });
+
+            if (filtered.length === 0) {
+                lastFilteredInstances = [];
+                content.innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-icon">&#9673;</div>
+                        <div class="empty-title">No instances found</div>
+                        <div class="empty-description">No active Claude Code sessions match your criteria</div>
+                    </div>`;
+                return;
+            }
+
+            lastFilteredInstances = filtered;
+            content.innerHTML = filtered.map((inst, idx) => `
+                <div class="instance-card" data-idx="${idx}">
+                    <div class="instance-avatar">${inst.shortId.substring(0, 4)}</div>
+                    <div class="instance-info">
+                        <div class="instance-id">${inst.shortId}</div>
+                        <div class="instance-dir">${inst.shortDir}</div>
+                    </div>
+                    <div class="instance-badges">
+                        ${inst.isLeader ? '<span class="badge badge-leader">Leader</span>' : ''}
+                        ${inst.isIdle ? '<span class="badge badge-idle">Idle</span>' : ''}
+                        ${inst.isActive ? '<span class="badge badge-active">Active</span>' : '<span class="badge badge-inactive">Inactive</span>'}
+                    </div>
+                    <div class="instance-time">${inst.heartbeatAge}</div>
+                </div>
+            `).join('');
+        }
+
+        // Messages
+        function setMessageFilter(filter) {
+            messageFilter = filter;
+            document.querySelectorAll('#messages-view .filter-group .filter-btn').forEach(btn => {
+                btn.classList.toggle('active', btn.dataset.filter === filter);
+            });
+            renderMessages();
+        }
+
+        function filterMessages() {
+            renderMessages();
+        }
+
+        function renderMessages() {
+            const search = document.getElementById('messages-search').value.toLowerCase();
+            const fromFilter = document.getElementById('messages-from').value;
+            const toFilter = document.getElementById('messages-to').value;
+            const content = document.getElementById('messages-content');
+
+            let filtered = allData.messages.filter(msg => {
+                if (search && !msg.content.toLowerCase().includes(search) &&
+                    !msg.fromDir.toLowerCase().includes(search) &&
+                    !msg.toDir.toLowerCase().includes(search)) return false;
+                if (fromFilter && msg.shortFromDir !== fromFilter) return false;
+                if (toFilter && msg.shortToDir !== toFilter) return false;
+                switch (messageFilter) {
+                    case 'unread': return !msg.isRead;
+                    case 'read': return msg.isRead;
+                    default: return true;
+                }
+            });
+
+            if (filtered.length === 0) {
+                lastFilteredMessages = [];
+                content.innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-icon">&#9993;</div>
+                        <div class="empty-title">No messages found</div>
+                        <div class="empty-description">No messages match your current filters</div>
+                    </div>`;
+                return;
+            }
+
+            lastFilteredMessages = filtered;
+            content.innerHTML = filtered.map((msg, idx) => `
+                <div class="message-card ${msg.isRead ? '' : 'unread'}" data-idx="${idx}">
+                    <div class="message-header">
+                        <div class="message-from">
+                            <div class="message-avatar">${msg.shortFrom.substring(0, 4)}</div>
+                            <div class="message-meta">
+                                <span class="message-sender">${escapeHtml(msg.shortFromDir)}</span>
+                                <span class="message-direction">to ${escapeHtml(msg.shortToDir)}</span>
+                            </div>
+                        </div>
+                        <span class="message-time">${msg.age}</span>
+                    </div>
+                    <div class="message-content">${escapeHtml(msg.preview)}</div>
+                </div>
+            `).join('');
+        }
+
+        // Facts
+        function setFactFilter(filter) {
+            factFilter = filter;
+            document.querySelectorAll('#facts-view .filter-group .filter-btn').forEach(btn => {
+                btn.classList.toggle('active', btn.dataset.filter === filter);
+            });
+            renderFacts();
+        }
+
+        function filterFacts() {
+            renderFacts();
+        }
+
+        function deleteFact(id, btn) {
+            if (!confirm('Delete this fact?')) return;
+            const card = btn.closest('.fact-card');
+            card.style.opacity = '0.5';
+            card.style.pointerEvents = 'none';
+            fetch('/api/facts/delete?id=' + id, { method: 'POST' })
+                .then(res => {
+                    if (!res.ok) throw new Error('Delete failed');
+                    allData.facts = allData.facts.filter(f => f.id !== id);
+                    renderFacts();
+                    showToast('Fact deleted', 'success');
+                })
+                .catch(() => {
+                    card.style.opacity = '';
+                    card.style.pointerEvents = '';
+                    showToast('Failed to delete fact', 'error');
+                });
+        }
+
+        function renderFacts() {
+            const search = document.getElementById('facts-search').value.toLowerCase();
+            const tagFilter = document.getElementById('facts-tag').value;
+            const sourceFilter = document.getElementById('facts-source').value;
+            const content = document.getElementById('facts-content');
+
+            let filtered = allData.facts.filter(fact => {
+                if (search && !fact.content.toLowerCase().includes(search)) return false;
+                if (tagFilter && !fact.tags.includes(tagFilter)) return false;
+                if (sourceFilter && fact.shortDir !== sourceFilter) return false;
+                switch (factFilter) {
+                    case 'local': return fact.isLocal;
+                    case 'global': return !fact.isLocal;
+                    default: return true;
+                }
+            });
+
+            if (filtered.length === 0) {
+                content.innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-icon">&#9733;</div>
+                        <div class="empty-title">No facts found</div>
+                        <div class="empty-description">No stored facts match your current filters</div>
+                    </div>`;
+                return;
+            }
+
+            content.innerHTML = filtered.map(fact => {
+                const isSelected = selectedFacts.has(fact.id);
+                const selectableClass = selectMode ? ' selectable' : '';
+                const selectedClass = isSelected ? ' selected-for-delete' : '';
+                return `
+                <div class="fact-card ${fact.isLocal ? 'local' : ''}${selectableClass}${selectedClass}" data-fact-id="${fact.id}">
+                    ${selectMode ? `<div class="fact-select-checkbox">${isSelected ? '&#10003;' : ''}</div>` : ''}
+                    <div class="fact-content">${escapeHtml(fact.preview)}</div>
+                    <div class="fact-footer">
+                        <div class="fact-tags">
+                            ${fact.tags.map(tag => `<span class="tag">${escapeHtml(tag)}</span>`).join('')}
+                        </div>
+                        <div class="fact-footer-right">
+                            ${!selectMode ? `<button class="delete-fact-btn" data-fact-id="${fact.id}" title="Delete fact">&#128465;</button>` : ''}
+                            <span class="fact-source ${fact.isLocal ? 'local' : ''}">
+                                ${fact.isLocal ? '&#10003; Local' : fact.shortDir}
+                            </span>
+                        </div>
+                    </div>
+                </div>`;
+            }).join('');
+        }
+
+        // Utils
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        function showModal(title, content) {
+            previousActiveElement = document.activeElement;
+            document.getElementById('modal-title').textContent = title;
+            document.getElementById('modal-body').innerHTML = content;
+            document.getElementById('modal').classList.add('active');
+            setTimeout(() => {
+                const closeBtn = document.querySelector('#modal .modal-close');
+                if (closeBtn) closeBtn.focus();
+            }, 100);
+        }
+
+        function closeModal() {
+            document.getElementById('modal').classList.remove('active');
+            if (previousActiveElement) { previousActiveElement.focus(); previousActiveElement = null; }
+        }
+
+        async function fetchContextWindow(instanceId) {
+            const res = await fetch('/api/context-window?instance=' + encodeURIComponent(instanceId));
+            if (!res.ok) throw new Error('Failed to fetch context window');
+            return res.json();
+        }
+
+        function formatTokenCount(tokens) {
+            if (tokens >= 1000) return (tokens / 1000).toFixed(1).replace(/\.0$/, '') + 'K';
+            return String(tokens);
+        }
+
+        function renderContextWindow(data) {
+            const pct = ((data.total_tokens / data.max_tokens) * 100).toFixed(1);
+            const factPct = (data.fact_tokens / data.max_tokens) * 100;
+            const msgPct = (data.message_tokens / data.max_tokens) * 100;
+            const sysPct = (data.system_tokens / data.max_tokens) * 100;
+
+            const topItems = data.items.slice(0, 10);
+            const maxItemTokens = topItems.length > 0 ? topItems[0].tokens : 1;
+
+            let itemsHtml = '';
+            if (topItems.length > 0) {
+                itemsHtml = `<div class="context-items-list">${topItems.map(item => `
+                    <div class="context-item">
+                        <span class="context-item-type ${item.type}">${item.type}</span>
+                        <div class="context-item-bar-container">
+                            <div class="context-item-bar ${item.type}" style="width: ${Math.max(2, (item.tokens / maxItemTokens) * 100)}%"></div>
+                        </div>
+                        <span class="context-item-preview" title="${escapeHtml(item.preview)}">${escapeHtml(item.preview)}</span>
+                        <span class="context-item-tokens">${formatTokenCount(item.tokens)}</span>
+                    </div>
+                `).join('')}</div>`;
+            }
+
+            return `
+                <div class="context-window-section">
+                    <div class="context-window-header">Context Window (openclawder contribution)</div>
+                    <div class="context-gauge">
+                        <div class="context-gauge-segment facts" style="width: ${factPct}%"></div>
+                        <div class="context-gauge-segment messages" style="width: ${msgPct}%"></div>
+                        <div class="context-gauge-segment system" style="width: ${sysPct}%"></div>
+                    </div>
+                    <div class="context-summary">
+                        <span class="context-summary-tokens">~${formatTokenCount(data.total_tokens)} / ${formatTokenCount(data.max_tokens)} tokens</span>
+                        <span class="context-summary-pct">${pct}% used</span>
+                    </div>
+                    <div class="context-legend">
+                        <span class="context-legend-item"><span class="context-legend-dot facts"></span>Facts (${data.fact_count})</span>
+                        <span class="context-legend-item"><span class="context-legend-dot messages"></span>Messages (${data.message_count})</span>
+                        <span class="context-legend-item"><span class="context-legend-dot system"></span>System</span>
+                    </div>
+                    ${itemsHtml}
+                </div>
+            `;
+        }
+
+        function showInstanceDetails(inst) {
+            // Build recent messages section
+            let messagesHtml = '';
+            if (inst.recentMessages && inst.recentMessages.length > 0) {
+                messagesHtml = `
+                    <div class="modal-field">
+                        <div class="modal-label">Recent Activity</div>
+                        <div class="modal-messages">
+                            ${inst.recentMessages.map(msg => `
+                                <div class="modal-message ${msg.isRead ? '' : 'unread'}">
+                                    <div class="modal-message-header">
+                                        <span class="modal-message-from">${msg.toInstance === inst.id ? 'From' : 'To'}: ${escapeHtml(msg.toInstance === inst.id ? msg.shortFromDir : msg.shortToDir)}</span>
+                                        <span class="modal-message-time">${msg.age}</span>
+                                    </div>
+                                    <div class="modal-message-preview">${escapeHtml(msg.preview)}</div>
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+                `;
+            }
+
+            const contextPlaceholderId = 'ctx-window-' + Date.now();
+
+            showModal(`${escapeHtml(inst.projectName)}`, `
+                <div class="modal-field">
+                    <div class="modal-label">Status</div>
+                    <div class="modal-value">
+                        ${inst.isLeader ? '<span class="badge badge-leader">Leader</span> ' : ''}
+                        ${inst.isIdle ? '<span class="badge badge-idle">Idle</span> ' : ''}
+                        ${inst.isActive ? '<span class="badge badge-active">Working</span>' : '<span class="badge badge-inactive">Offline</span>'}
+                        ${inst.needsAttention ? `<span class="badge badge-idle">${escapeHtml(inst.attentionReason)}</span>` : ''}
+                    </div>
+                </div>
+                <div class="modal-field">
+                    <div class="modal-label">Directory</div>
+                    <div class="modal-value" style="font-size: 0.8125rem;">${inst.directory}</div>
+                </div>
+                <div class="modal-field">
+                    <div class="modal-label">Last Heartbeat</div>
+                    <div class="modal-value">${inst.heartbeatAge}</div>
+                </div>
+                <div class="modal-field">
+                    <div class="modal-label">Instance ID</div>
+                    <div class="modal-value" style="font-size: 0.75rem; color: var(--muted);">${inst.id}</div>
+                </div>
+                ${messagesHtml}
+                <div id="${contextPlaceholderId}">
+                    <div class="context-window-section">
+                        <div class="context-window-header">Context Window (openclawder contribution)</div>
+                        <div class="context-loading"><div class="spinner"></div> Loading context window...</div>
+                    </div>
+                </div>
+            `);
+
+            // Fetch and render context window asynchronously
+            fetchContextWindow(inst.id).then(data => {
+                const el = document.getElementById(contextPlaceholderId);
+                if (el) el.innerHTML = renderContextWindow(data);
+            }).catch(() => {
+                const el = document.getElementById(contextPlaceholderId);
+                if (el) el.innerHTML = '<div class="context-window-section"><div class="context-window-header">Context Window (openclawder contribution)</div><div style="color: var(--muted); font-size: 0.8125rem;">Unable to load context window data</div></div>';
+            });
+        }
+
+        function showMessageDetails(msg) {
+            showModal('Message Details', `
+                <div class="modal-field">
+                    <div class="modal-label">From Agent</div>
+                    <div class="modal-value">${escapeHtml(msg.fromDir)}</div>
+                </div>
+                <div class="modal-field">
+                    <div class="modal-label">From Instance</div>
+                    <div class="modal-value" style="font-size: 0.75rem; color: var(--muted);">${msg.fromInstance}</div>
+                </div>
+                <div class="modal-field">
+                    <div class="modal-label">To Agent</div>
+                    <div class="modal-value">${escapeHtml(msg.toDir)}</div>
+                </div>
+                <div class="modal-field">
+                    <div class="modal-label">To Instance</div>
+                    <div class="modal-value" style="font-size: 0.75rem; color: var(--muted);">${msg.toInstance}</div>
+                </div>
+                <div class="modal-field">
+                    <div class="modal-label">Time</div>
+                    <div class="modal-value">${msg.age}</div>
+                </div>
+                <div class="modal-field">
+                    <div class="modal-label">Status</div>
+                    <div class="modal-value">${msg.isRead ? 'Read' : '<span class="badge badge-leader">Unread</span>'}</div>
+                </div>
+                <div class="modal-field">
+                    <div class="modal-label">Content</div>
+                    <div class="modal-content">${escapeHtml(msg.content)}</div>
+                </div>
+            `);
+        }
+
+        function showFactDetails(factId) {
+            const fact = allData.facts.find(f => f.id === factId);
+            if (!fact) return;
+            showModal('Fact Details', `
+                <div class="modal-field">
+                    <div class="modal-label">ID</div>
+                    <div class="modal-value">${fact.id}</div>
+                </div>
+                <div class="modal-field">
+                    <div class="modal-label">Source Directory</div>
+                    <div class="modal-value">${fact.sourceDir}</div>
+                </div>
+                <div class="modal-field">
+                    <div class="modal-label">Tags</div>
+                    <div class="modal-value">${fact.tags.length > 0 ? fact.tags.map(t => `<span class="tag">${escapeHtml(t)}</span>`).join(' ') : '<span style="color: var(--muted)">None</span>'}</div>
+                </div>
+                <div class="modal-field">
+                    <div class="modal-label">Content</div>
+                    <div class="modal-content">${escapeHtml(fact.content)}</div>
+                </div>
+                <div class="modal-actions">
+                    <button class="btn btn-secondary" onclick="closeModal()">Close</button>
+                    <button class="btn btn-primary" onclick="showEditFactForm(${fact.id})">Edit</button>
+                </div>
+            `);
+        }
+
+        // === Memory Management Functions ===
+
+        function formatBytes(bytes) {
+            if (bytes === 0) return '0 B';
+            const k = 1024;
+            const sizes = ['B', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
+        }
+
+        async function fetchFactStats() {
+            if (factStatsFetchInFlight) return;
+            factStatsFetchInFlight = true;
+            try {
+                const res = await fetch('/api/facts/stats');
+                factStats = await res.json();
+                renderFactStats();
+            } catch (err) {
+                console.error('Failed to fetch fact stats:', err);
+            } finally {
+                factStatsFetchInFlight = false;
+            }
+        }
+
+        function renderFactStats() {
+            const banner = document.getElementById('fact-stats-banner');
+            if (!factStats) { banner.style.display = 'none'; return; }
+            banner.style.display = 'block';
+
+            document.getElementById('fs-active').textContent = factStats.totalFacts;
+            document.getElementById('fs-size').textContent = formatBytes(factStats.totalSize);
+            document.getElementById('fs-dirs').textContent = factStats.directories ? factStats.directories.length : 0;
+            document.getElementById('fs-deleted').textContent = factStats.deletedFacts;
+
+            const purgeBtn = document.getElementById('purge-btn');
+            purgeBtn.style.display = factStats.deletedFacts > 0 ? 'inline-block' : 'none';
+
+            const tbody = document.getElementById('fact-stats-table-body');
+            if (factStats.directories && factStats.directories.length > 0) {
+                tbody.innerHTML = factStats.directories.map(d => `
+                    <tr>
+                        <td title="${escapeHtml(d.directory)}">${escapeHtml(d.shortDir)}</td>
+                        <td>${d.count}</td>
+                        <td>${formatBytes(d.size)}</td>
+                        <td>${d.oldestAge}</td>
+                        <td>${d.newestAge}</td>
+                    </tr>
+                `).join('');
+            } else {
+                tbody.innerHTML = '<tr><td colspan="5" style="color: var(--muted); text-align: center;">No data</td></tr>';
+            }
+        }
+
+        function toggleStatsExpand() {
+            statsExpanded = !statsExpanded;
+            document.getElementById('fact-stats-details').classList.toggle('expanded', statsExpanded);
+            document.getElementById('stats-expand-icon').classList.toggle('expanded', statsExpanded);
+        }
+
+        // Create Fact
+        function showCreateFactModal() {
+            showModal('Add New Fact', `
+                <div class="modal-field">
+                    <div class="modal-label">Content</div>
+                    <textarea class="modal-edit-textarea" id="create-fact-content" placeholder="Enter fact content..."></textarea>
+                </div>
+                <div class="modal-field">
+                    <div class="modal-label">Tags (comma-separated)</div>
+                    <input type="text" class="modal-edit-tags-input" id="create-fact-tags" placeholder="e.g. architecture, preference, debug">
+                </div>
+                <div class="modal-actions">
+                    <button class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+                    <button class="btn btn-primary" onclick="createFact()">Create</button>
+                </div>
+            `);
+            setTimeout(() => document.getElementById('create-fact-content').focus(), 100);
+        }
+
+        async function createFact() {
+            const content = document.getElementById('create-fact-content').value.trim();
+            const tagsRaw = document.getElementById('create-fact-tags').value.trim();
+            if (!content) { showToast('Content is required', 'warning'); return; }
+
+            const tags = tagsRaw ? tagsRaw.split(',').map(t => t.trim()).filter(t => t) : [];
+
+            try {
+                const res = await fetch('/api/facts/create', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ content, tags })
+                });
+                if (!res.ok) { const msg = await res.text(); throw new Error(msg); }
+                const newFact = await res.json();
+                allData.facts.unshift(newFact);
+                allData.stats.totalFacts++;
+                updateStats();
+                renderFacts();
+                closeModal();
+                fetchFactStats();
+                showToast('Fact created', 'success');
+            } catch (err) {
+                showToast('Failed to create fact: ' + err.message, 'error');
+            }
+        }
+
+        // Edit Fact
+        function showEditFactForm(factId) {
+            const fact = allData.facts.find(f => f.id === factId);
+            if (!fact) return;
+            document.getElementById('modal-title').textContent = 'Edit Fact';
+            document.getElementById('modal-body').innerHTML = `
+                <div class="modal-field">
+                    <div class="modal-label">Content</div>
+                    <textarea class="modal-edit-textarea" id="edit-fact-content">${escapeHtml(fact.content)}</textarea>
+                </div>
+                <div class="modal-field">
+                    <div class="modal-label">Tags (comma-separated)</div>
+                    <input type="text" class="modal-edit-tags-input" id="edit-fact-tags" value="${escapeHtml(fact.tags.join(', '))}">
+                </div>
+                <div class="modal-actions">
+                    <button class="btn btn-secondary" onclick="showFactDetails(${factId})">Cancel</button>
+                    <button class="btn btn-primary" onclick="saveFactEdit(${factId})">Save</button>
+                </div>
+            `;
+            setTimeout(() => document.getElementById('edit-fact-content').focus(), 100);
+        }
+
+        async function saveFactEdit(factId) {
+            const content = document.getElementById('edit-fact-content').value.trim();
+            const tagsRaw = document.getElementById('edit-fact-tags').value.trim();
+            if (!content) { showToast('Content is required', 'warning'); return; }
+
+            const tags = tagsRaw ? tagsRaw.split(',').map(t => t.trim()).filter(t => t) : [];
+
+            try {
+                const res = await fetch('/api/facts/update', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ id: factId, content, tags })
+                });
+                if (!res.ok) { const msg = await res.text(); throw new Error(msg); }
+                const updated = await res.json();
+                const idx = allData.facts.findIndex(f => f.id === factId);
+                if (idx >= 0) allData.facts[idx] = updated;
+                renderFacts();
+                showFactDetails(factId);
+                fetchFactStats();
+                showToast('Fact updated', 'success');
+            } catch (err) {
+                showToast('Failed to update fact: ' + err.message, 'error');
+            }
+        }
+
+        // Select Mode & Bulk Delete
+        function toggleSelectMode() {
+            selectMode = !selectMode;
+            selectedFacts.clear();
+            const btn = document.getElementById('select-mode-btn');
+            btn.classList.toggle('active', selectMode);
+            btn.innerHTML = selectMode ? '<span>&#10005;</span> Cancel' : '<span>&#9745;</span> Select';
+            document.getElementById('bulk-action-bar').classList.toggle('active', selectMode);
+            updateBulkCount();
+            renderFacts();
+        }
+
+        function toggleFactSelection(id) {
+            if (selectedFacts.has(id)) {
+                selectedFacts.delete(id);
+            } else {
+                selectedFacts.add(id);
+            }
+            updateBulkCount();
+            renderFacts();
+        }
+
+        function selectAllFacts() {
+            allData.facts.forEach(f => selectedFacts.add(f.id));
+            updateBulkCount();
+            renderFacts();
+        }
+
+        function deselectAllFacts() {
+            selectedFacts.clear();
+            updateBulkCount();
+            renderFacts();
+        }
+
+        function updateBulkCount() {
+            document.getElementById('bulk-count').textContent = selectedFacts.size + ' selected';
+        }
+
+        async function bulkDeleteSelectedFacts() {
+            if (selectedFacts.size === 0) return;
+            if (!confirm(`Delete ${selectedFacts.size} fact(s)? This is a soft delete.`)) return;
+
+            const ids = [...selectedFacts];
+            try {
+                const res = await fetch('/api/facts/bulk-delete', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ ids })
+                });
+                if (!res.ok) { const msg = await res.text(); throw new Error(msg); }
+                allData.facts = allData.facts.filter(f => !selectedFacts.has(f.id));
+                allData.stats.totalFacts = allData.facts.length;
+                updateStats();
+                toggleSelectMode();
+                fetchFactStats();
+                showToast(`${ids.length} fact(s) deleted`, 'success');
+            } catch (err) {
+                showToast('Failed to delete facts: ' + err.message, 'error');
+            }
+        }
+
+        // Purge
+        async function purgeDeletedFacts() {
+            if (!confirm(`Permanently purge ${factStats.deletedFacts} deleted fact(s)? This cannot be undone.`)) return;
+            try {
+                const res = await fetch('/api/facts/purge', { method: 'POST' });
+                if (!res.ok) { const msg = await res.text(); throw new Error(msg); }
+                fetchFactStats();
+                showToast('Deleted facts purged', 'success');
+            } catch (err) {
+                showToast('Failed to purge: ' + err.message, 'error');
+            }
+        }
+
+        // Keyboard shortcuts
+        document.addEventListener('keydown', (e) => {
+            // Cmd+K / Ctrl+K - command palette (before input guard)
+            if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+                e.preventDefault();
+                togglePalette();
+                return;
+            }
+
+            // If palette is open, suppress all other shortcuts
+            if (paletteOpen) return;
+
+            // Don't handle shortcuts when typing in inputs or terminal is open
+            if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+
+            // Escape cascade: palette > settings > terminal > modal
+            if (e.key === 'Escape') {
+                const settingsOverlay = document.getElementById('settings-overlay');
+                if (settingsOverlay.classList.contains('active')) {
+                    closeSettings();
+                    return;
+                }
+                const terminalOverlay = document.getElementById('terminal-overlay');
+                if (terminalOverlay.classList.contains('active')) {
+                    minimizeTerminal();
+                    return;
+                }
+                closeModal();
+                closeLaunchModal();
+                return;
+            }
+            if (e.key === 'r' || e.key === 'R') {
+                if (!e.ctrlKey && !e.metaKey) fetchData();
+            }
+
+            // Number keys 1-9 select instances in map view
+            if (currentView === 'map' && e.key >= '1' && e.key <= '9') {
+                const idx = parseInt(e.key) - 1;
+                if (idx < allData.instances.length) {
+                    selectInstance(idx);
+                }
+                return;
+            }
+
+            // Alt+number for view switching
+            if (e.altKey) {
+                if (e.key === '1' || e.key === 'm') switchView('map');
+                if (e.key === '2' || e.key === 'i') switchView('instances');
+                if (e.key === '3' || e.key === 'e') switchView('messages');
+                if (e.key === '4' || e.key === 'f') switchView('facts');
+                if (e.key === '5') switchView('analytics');
+                if (e.key === '6') switchView('graph');
+            }
+        });
+
+        document.getElementById('modal').addEventListener('click', (e) => {
+            if (e.target.id === 'modal') closeModal();
+        });
+
+        document.getElementById('launch-modal').addEventListener('click', (e) => {
+            if (e.target.id === 'launch-modal') closeLaunchModal();
+        });
+
+        // Launch Modal Functions
+        function showLaunchModal() {
+            const modal = document.getElementById('launch-modal');
+            const input = document.getElementById('launch-dir');
+            const quickList = document.getElementById('quick-launch-list');
+
+            // Pre-fill with current working directory
+            input.value = WORK_DIR;
+
+            // Populate quick launch with existing instance directories
+            const dirs = [...new Set(allData.instances.map(i => i.directory))];
+            lastQuickLaunchDirs = dirs;
+            quickList.innerHTML = dirs.map((dir, idx) => {
+                const name = dir.split('/').pop();
+                return `
+                    <div class="quick-launch-item" data-idx="${idx}">
+                        <div class="quick-launch-icon">&#128193;</div>
+                        <div class="quick-launch-info">
+                            <div class="quick-launch-name">${escapeHtml(name)}</div>
+                            <div class="quick-launch-path">${escapeHtml(dir)}</div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+
+            modal.classList.add('active');
+            input.focus();
+        }
+
+        function closeLaunchModal() {
+            document.getElementById('launch-modal').classList.remove('active');
+        }
+
+        function launchFromDir(dir) {
+            document.getElementById('launch-dir').value = dir;
+            launchSession();
+        }
+
+        async function launchSession() {
+            const dir = document.getElementById('launch-dir').value.trim();
+            if (!dir) {
+                showToast('Please enter a directory path', 'warning');
+                return;
+            }
+
+            if (terminals.length >= MAX_TERMINALS) {
+                showToast(`Maximum ${MAX_TERMINALS} terminals allowed. Close one to open another.`, 'warning');
+                return;
+            }
+
+            closeLaunchModal();
+            openTerminal(dir);
+        }
+
+        // Terminal Functions
+        function createTerminalTheme() {
+            return {
+                background: '#0d1117',
+                foreground: '#c9d1d9',
+                cursor: '#c9d1d9',
+                cursorAccent: '#0d1117',
+                selection: 'rgba(139, 92, 246, 0.3)',
+                black: '#484f58',
+                red: '#ff7b72',
+                green: '#3fb950',
+                yellow: '#d29922',
+                blue: '#58a6ff',
+                magenta: '#bc8cff',
+                cyan: '#39c5cf',
+                white: '#b1bac4',
+                brightBlack: '#6e7681',
+                brightRed: '#ffa198',
+                brightGreen: '#56d364',
+                brightYellow: '#e3b341',
+                brightBlue: '#79c0ff',
+                brightMagenta: '#d2a8ff',
+                brightCyan: '#56d4dd',
+                brightWhite: '#f0f6fc'
+            };
+        }
+
+        function openTerminal(dir) {
+            const overlay = document.getElementById('terminal-overlay');
+            const container = document.getElementById('terminal-container');
+            const titleDir = document.getElementById('terminal-dir');
+
+            const projectName = dir.split('/').pop();
+            const termId = ++terminalIdCounter;
+
+            // Create new terminal instance
+            const term = new Terminal({
+                cursorBlink: true,
+                fontSize: 14,
+                fontFamily: "'JetBrains Mono', 'Menlo', 'Monaco', monospace",
+                theme: createTerminalTheme()
+            });
+
+            const fit = new FitAddon.FitAddon();
+            term.loadAddon(fit);
+
+            const webLinks = new WebLinksAddon.WebLinksAddon();
+            term.loadAddon(webLinks);
+
+            // Create terminal entry
+            const termEntry = {
+                id: termId,
+                terminal: term,
+                socket: null,
+                fitAddon: fit,
+                dir: dir,
+                projectName: projectName,
+                minimized: false
+            };
+
+            terminals.push(termEntry);
+            activeTerminalId = termId;
+
+            // Update title
+            titleDir.textContent = 'Claude Code - ' + projectName;
+
+            // Clear container and show
+            container.innerHTML = '';
+            overlay.classList.add('active');
+
+            // Open terminal in container
+            term.open(container);
+
+            // Fit and connect
+            setTimeout(() => {
+                fit.fit();
+                connectTerminalWebSocket(termEntry);
+            }, 100);
+
+            updateTerminalsTray();
+        }
+
+        function handleTerminalResize() {
+            const active = terminals.find(t => t.id === activeTerminalId);
+            if (active && active.fitAddon && active.terminal) {
+                active.fitAddon.fit();
+                if (active.socket && active.socket.readyState === WebSocket.OPEN) {
+                    active.socket.send(JSON.stringify({
+                        cols: active.terminal.cols,
+                        rows: active.terminal.rows
+                    }));
+                }
+            }
+        }
+
+        function connectTerminalWebSocket(termEntry) {
+            const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+            const wsUrl = `${protocol}//${window.location.host}/api/terminal?dir=${encodeURIComponent(termEntry.dir)}`;
+
+            const socket = new WebSocket(wsUrl);
+            termEntry.socket = socket;
+
+            socket.onopen = () => {
+                console.log('Terminal WebSocket connected for', termEntry.projectName);
+                // Wait for layout to settle before measuring
+                requestAnimationFrame(() => {
+                    termEntry.fitAddon.fit();
+                    const size = { cols: termEntry.terminal.cols, rows: termEntry.terminal.rows };
+                    console.log('Sending terminal size:', size);
+                    socket.send(JSON.stringify(size));
+                });
+            };
+
+            socket.onmessage = (event) => {
+                // Handle binary data from PTY
+                if (event.data instanceof Blob) {
+                    event.data.arrayBuffer().then(buffer => {
+                        termEntry.terminal.write(new Uint8Array(buffer));
+                    });
+                } else if (event.data instanceof ArrayBuffer) {
+                    termEntry.terminal.write(new Uint8Array(event.data));
+                } else {
+                    termEntry.terminal.write(event.data);
+                }
+            };
+
+            socket.onerror = (error) => {
+                console.error('Terminal WebSocket error:', error);
+                termEntry.terminal.write('\r\n\x1b[31mConnection error.\x1b[0m\r\n');
+            };
+
+            socket.onclose = () => {
+                console.log('Terminal WebSocket closed for', termEntry.projectName);
+                termEntry.terminal.write('\r\n\x1b[33mSession ended.\x1b[0m\r\n');
+            };
+
+            termEntry.terminal.onData(data => {
+                if (socket.readyState === WebSocket.OPEN) {
+                    socket.send(data);
+                }
+            });
+        }
+
+        function closeTerminal(termId = activeTerminalId) {
+            const idx = terminals.findIndex(t => t.id === termId);
+            if (idx === -1) return;
+
+            const termEntry = terminals[idx];
+
+            // Close socket
+            if (termEntry.socket) {
+                termEntry.socket.close();
+            }
+
+            // Dispose terminal
+            termEntry.terminal.dispose();
+
+            // Remove from array
+            terminals.splice(idx, 1);
+
+            // Update active
+            if (activeTerminalId === termId) {
+                activeTerminalId = null;
+                const overlay = document.getElementById('terminal-overlay');
+                overlay.classList.remove('active');
+            }
+
+            updateTerminalsTray();
+
+            // Refresh data
+            setTimeout(fetchData, 1000);
+        }
+
+        function minimizeTerminal() {
+            const termEntry = terminals.find(t => t.id === activeTerminalId);
+            if (!termEntry) return;
+
+            termEntry.minimized = true;
+            activeTerminalId = null;
+
+            const overlay = document.getElementById('terminal-overlay');
+            overlay.classList.remove('active');
+
+            updateTerminalsTray();
+        }
+
+        function restoreTerminal(termId) {
+            const termEntry = terminals.find(t => t.id === termId);
+            if (!termEntry) return;
+
+            const overlay = document.getElementById('terminal-overlay');
+            const container = document.getElementById('terminal-container');
+            const titleDir = document.getElementById('terminal-dir');
+
+            termEntry.minimized = false;
+            activeTerminalId = termId;
+
+            // Update title
+            titleDir.textContent = 'Claude Code - ' + termEntry.projectName;
+
+            // Clear and re-attach terminal
+            container.innerHTML = '';
+            termEntry.terminal.open(container);
+
+            overlay.classList.add('active');
+
+            // Refit
+            setTimeout(() => {
+                termEntry.fitAddon.fit();
+                // Send resize in case size changed
+                if (termEntry.socket && termEntry.socket.readyState === WebSocket.OPEN) {
+                    termEntry.socket.send(JSON.stringify({
+                        cols: termEntry.terminal.cols,
+                        rows: termEntry.terminal.rows
+                    }));
+                }
+            }, 100);
+
+            updateTerminalsTray();
+        }
+
+        function updateTerminalsTray() {
+            const tray = document.getElementById('terminals-tray');
+            const minimized = terminals.filter(t => t.minimized);
+
+            if (minimized.length === 0) {
+                tray.classList.remove('active');
+                tray.innerHTML = '';
+                return;
+            }
+
+            tray.classList.add('active');
+            tray.innerHTML = minimized.map(t => `
+                <div class="terminal-minimized" onclick="restoreTerminal(${t.id})">
+                    <div class="terminal-minimized-dot"></div>
+                    <span class="terminal-minimized-text">${escapeHtml(t.projectName)}</span>
+                    <span class="terminal-minimized-close" onclick="event.stopPropagation(); closeTerminal(${t.id})">&times;</span>
+                </div>
+            `).join('');
+        }
+
+        function hasActiveTerminal() {
+            return terminals.some(t => !t.minimized);
+        }
+
+        function hasMinimizedTerminals() {
+            return terminals.some(t => t.minimized);
+        }
+
+        // Toast notification
+        function showToast(message, type = 'info', duration = 3000) {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            toast.className = `toast toast-${type}`;
+            toast.textContent = message;
+            container.appendChild(toast);
+            setTimeout(() => {
+                toast.classList.add('removing');
+                toast.addEventListener('animationend', () => toast.remove());
+            }, duration);
+        }
+
+        // Focus trap for modals
+        function trapFocus(container) {
+            container.addEventListener('keydown', (e) => {
+                if (e.key !== 'Tab') return;
+                const focusable = container.querySelectorAll('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])');
+                if (focusable.length === 0) return;
+                const first = focusable[0];
+                const last = focusable[focusable.length - 1];
+                if (e.shiftKey) {
+                    if (document.activeElement === first) { e.preventDefault(); last.focus(); }
+                } else {
+                    if (document.activeElement === last) { e.preventDefault(); first.focus(); }
+                }
+            });
+        }
+        trapFocus(document.getElementById('modal'));
+        trapFocus(document.getElementById('launch-modal'));
+
+        // Delegated click handlers (Phase 1: no inline JSON.stringify)
+        document.getElementById('instances-content').addEventListener('click', (e) => {
+            const card = e.target.closest('.instance-card');
+            if (!card) return;
+            const idx = parseInt(card.dataset.idx);
+            if (idx >= 0 && idx < lastFilteredInstances.length) {
+                showInstanceDetails(lastFilteredInstances[idx]);
+            }
+        });
+
+        document.getElementById('messages-content').addEventListener('click', (e) => {
+            const card = e.target.closest('.message-card');
+            if (!card) return;
+            const idx = parseInt(card.dataset.idx);
+            if (idx >= 0 && idx < lastFilteredMessages.length) {
+                showMessageDetails(lastFilteredMessages[idx]);
+            }
+        });
+
+        document.getElementById('quick-launch-list').addEventListener('click', (e) => {
+            const item = e.target.closest('.quick-launch-item');
+            if (!item) return;
+            const idx = parseInt(item.dataset.idx);
+            if (idx >= 0 && idx < lastQuickLaunchDirs.length) {
+                launchFromDir(lastQuickLaunchDirs[idx]);
+            }
+        });
+
+        document.getElementById('facts-content').addEventListener('click', (e) => {
+            const deleteBtn = e.target.closest('.delete-fact-btn');
+            if (deleteBtn) {
+                e.stopPropagation();
+                const factId = parseInt(deleteBtn.dataset.factId);
+                deleteFact(factId, deleteBtn);
+                return;
+            }
+            const card = e.target.closest('.fact-card');
+            if (!card) return;
+            const factId = parseInt(card.dataset.factId);
+            if (isNaN(factId)) return;
+            if (selectMode) {
+                toggleFactSelection(factId);
+            } else {
+                showFactDetails(factId);
+            }
+        });
+
+        // Register resize handler once (Phase 2a: no per-call leak)
+        window.addEventListener('resize', handleTerminalResize);
+
+        // Visibility-aware polling (Phase 2c)
+        let refreshTimer = null;
+        function startPolling() {
+            stopPolling();
+            refreshTimer = setInterval(fetchData, currentRefreshInterval);
+        }
+        function stopPolling() {
+            if (refreshTimer) { clearInterval(refreshTimer); refreshTimer = null; }
+        }
+        document.addEventListener('visibilitychange', () => {
+            if (document.hidden) {
+                stopPolling();
+            } else {
+                fetchData();
+                startPolling();
+            }
+        });
+
+        // === Analytics ===
+        function setAnalyticsRange(range) {
+            analyticsRange = range;
+            document.querySelectorAll('.time-range-selector .filter-btn').forEach(btn => {
+                btn.classList.toggle('active', btn.dataset.range === range);
+            });
+            fetchAnalytics();
+        }
+
+        async function fetchAnalytics() {
+            try {
+                const res = await fetch('/api/analytics?range=' + analyticsRange);
+                const data = await res.json();
+                renderAnalytics(data);
+            } catch (err) {
+                console.error('Failed to fetch analytics:', err);
+            }
+        }
+
+        function destroyCharts() {
+            Object.values(chartInstances).forEach(c => { if (c) c.destroy(); });
+            chartInstances = {};
+        }
+
+        function renderAnalytics(data) {
+            destroyCharts();
+
+            // Metrics
+            document.getElementById('metric-facts').textContent = data.total_facts || 0;
+            document.getElementById('metric-messages').textContent = data.total_messages || 0;
+            document.getElementById('metric-sessions').textContent = data.total_sessions || 0;
+            document.getElementById('metric-week-facts').textContent = data.facts_this_week || 0;
+
+            // Trends
+            const factsTrend = document.getElementById('metric-facts-trend');
+            const fw = data.facts_this_week || 0, fl = data.facts_last_week || 0;
+            if (fw > fl) { factsTrend.textContent = `+${fw - fl} vs last week`; factsTrend.className = 'metric-trend up'; }
+            else if (fw < fl) { factsTrend.textContent = `${fw - fl} vs last week`; factsTrend.className = 'metric-trend down'; }
+            else { factsTrend.textContent = 'No change'; factsTrend.className = 'metric-trend flat'; }
+
+            const msgTrend = document.getElementById('metric-messages-trend');
+            const mw = data.messages_this_week || 0, ml = data.messages_last_week || 0;
+            if (mw > ml) { msgTrend.textContent = `+${mw - ml} vs last week`; msgTrend.className = 'metric-trend up'; }
+            else if (mw < ml) { msgTrend.textContent = `${mw - ml} vs last week`; msgTrend.className = 'metric-trend down'; }
+            else { msgTrend.textContent = 'No change'; msgTrend.className = 'metric-trend flat'; }
+
+            const purple = getComputedStyle(document.documentElement).getPropertyValue('--primary').trim() || '#8B5CF6';
+            const cyan = getComputedStyle(document.documentElement).getPropertyValue('--secondary').trim() || '#06B6D4';
+            const textColor = getComputedStyle(document.documentElement).getPropertyValue('--muted').trim() || '#64748B';
+            const gridColor = getComputedStyle(document.documentElement).getPropertyValue('--border').trim() || '#334155';
+
+            const commonScales = {
+                x: { ticks: { color: textColor, maxTicksLimit: 8 }, grid: { color: gridColor + '40' } },
+                y: { ticks: { color: textColor }, grid: { color: gridColor + '40' }, beginAtZero: true }
+            };
+
+            // Fact Growth (cumulative line/area)
+            const factsData = data.facts_by_date || [];
+            let cumulative = 0;
+            const cumulativeData = factsData.map(d => { cumulative += d.count; return { x: d.date, y: cumulative }; });
+            chartInstances.facts = new Chart(document.getElementById('chart-facts'), {
+                type: 'line',
+                data: { datasets: [{ label: 'Facts', data: cumulativeData, borderColor: purple, backgroundColor: purple + '20', fill: true, tension: 0.3 }] },
+                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: commonScales }
+            });
+
+            // Message Volume (bar)
+            const msgsData = data.messages_by_date || [];
+            chartInstances.messages = new Chart(document.getElementById('chart-messages'), {
+                type: 'bar',
+                data: { labels: msgsData.map(d => d.date), datasets: [{ label: 'Messages', data: msgsData.map(d => d.count), backgroundColor: cyan + 'CC' }] },
+                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: commonScales }
+            });
+
+            // Session Activity (bar)
+            const sessData = data.sessions_by_date || [];
+            chartInstances.sessions = new Chart(document.getElementById('chart-sessions'), {
+                type: 'bar',
+                data: { labels: sessData.map(d => d.date), datasets: [{ label: 'Sessions', data: sessData.map(d => d.count), backgroundColor: purple + 'CC' }] },
+                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: commonScales }
+            });
+
+            // Facts by Directory (horizontal bar)
+            const dirData = data.facts_by_directory || {};
+            const dirLabels = Object.keys(dirData).map(d => d.split('/').pop() || d);
+            const dirValues = Object.values(dirData);
+            chartInstances.dirs = new Chart(document.getElementById('chart-dirs'), {
+                type: 'bar',
+                data: { labels: dirLabels, datasets: [{ label: 'Facts', data: dirValues, backgroundColor: cyan + 'CC' }] },
+                options: { responsive: true, maintainAspectRatio: false, indexAxis: 'y', plugins: { legend: { display: false } },
+                    scales: { x: { ticks: { color: textColor }, grid: { color: gridColor + '40' }, beginAtZero: true }, y: { ticks: { color: textColor }, grid: { display: false } } }
+                }
+            });
+        }
+
+        // === Knowledge Graph ===
+        const graphColors = ['#8B5CF6','#06B6D4','#10B981','#F59E0B','#EF4444','#EC4899','#6366F1','#14B8A6','#F97316','#84CC16'];
+
+        async function loadGraph() {
+            try {
+                const res = await fetch('/api/graph');
+                graphData = await res.json();
+                renderGraph(graphData);
+            } catch (err) {
+                console.error('Failed to load graph:', err);
+            }
+        }
+
+        function renderGraph(data) {
+            if (cyInstance) { cyInstance.destroy(); cyInstance = null; }
+
+            const container = document.getElementById('graph-canvas');
+            if (!data.nodes || data.nodes.length === 0) {
+                container.innerHTML = '<div class="empty-state"><div class="empty-icon">&#9694;</div><div class="empty-title">No facts to graph</div><div class="empty-description">Add some tagged facts to see relationships</div></div><div id="graph-legend" class="graph-legend" style="display:none;"></div>';
+                return;
+            }
+
+            // Ensure we have a proper container (not replaced by empty state)
+            if (!container.querySelector('#cy-container')) {
+                container.innerHTML = '<div id="cy-container" style="width:100%;height:100%;"></div><div id="graph-legend" class="graph-legend" style="display:none;"></div>';
+            }
+
+            // Build directory color map
+            const dirs = [...new Set(data.nodes.map(n => n.sourceDir))];
+            const dirColorMap = {};
+            dirs.forEach((d, i) => { dirColorMap[d] = graphColors[i % graphColors.length]; });
+
+            // Populate filter dropdowns
+            const dirFilter = document.getElementById('graph-dir-filter');
+            const tagFilter = document.getElementById('graph-tag-filter');
+            const currentDirVal = dirFilter.value;
+            const currentTagVal = tagFilter.value;
+            dirFilter.innerHTML = '<option value="">Directory: All</option>' +
+                dirs.map(d => `<option value="${d}">${d.split('/').pop() || d}</option>`).join('');
+            dirFilter.value = currentDirVal;
+            const allTags = [...new Set(data.nodes.flatMap(n => n.tags || []))].sort();
+            tagFilter.innerHTML = '<option value="">Tag: All</option>' +
+                allTags.map(t => `<option value="${t}">${t}</option>`).join('');
+            tagFilter.value = currentTagVal;
+
+            // Build cytoscape elements
+            const elements = [];
+            data.nodes.forEach(n => {
+                elements.push({ data: { id: 'n' + n.id, label: n.label, sourceDir: n.sourceDir, tags: n.tags, isOrphan: n.isOrphan, factId: n.id } });
+            });
+            data.edges.forEach(e => {
+                elements.push({ data: { source: 'n' + e.source, target: 'n' + e.target, weight: e.weight, label: e.label } });
+            });
+
+            cyInstance = cytoscape({
+                container: document.getElementById('cy-container'),
+                elements: elements,
+                style: [
+                    { selector: 'node', style: {
+                        'label': 'data(label)', 'font-size': '10px', 'text-wrap': 'ellipsis', 'text-max-width': '80px',
+                        'text-valign': 'bottom', 'text-margin-y': 4,
+                        'width': 24, 'height': 24,
+                        'background-color': (ele) => dirColorMap[ele.data('sourceDir')] || '#8B5CF6',
+                        'border-width': (ele) => ele.data('isOrphan') ? 2 : 1,
+                        'border-style': (ele) => ele.data('isOrphan') ? 'dashed' : 'solid',
+                        'border-color': (ele) => ele.data('isOrphan') ? '#EF4444' : '#475569',
+                        'color': getComputedStyle(document.documentElement).getPropertyValue('--text').trim() || '#F1F5F9'
+                    }},
+                    { selector: 'edge', style: {
+                        'width': (ele) => Math.min(1 + ele.data('weight'), 6),
+                        'line-color': '#475569', 'curve-style': 'bezier', 'opacity': 0.5
+                    }},
+                    { selector: 'node:active, node:selected', style: { 'border-color': '#8B5CF6', 'border-width': 3 } }
+                ],
+                layout: { name: 'cose', animate: false, nodeRepulsion: 8000, idealEdgeLength: 80 }
+            });
+
+            cyInstance.on('tap', 'node', (evt) => {
+                const factId = evt.target.data('factId');
+                if (factId) showFactDetails(factId);
+            });
+
+            cyInstance.on('mouseover', 'node', (evt) => {
+                evt.target.style('border-width', 3);
+                evt.target.style('border-color', '#8B5CF6');
+            });
+
+            cyInstance.on('mouseout', 'node', (evt) => {
+                const isOrphan = evt.target.data('isOrphan');
+                evt.target.style('border-width', isOrphan ? 2 : 1);
+                evt.target.style('border-color', isOrphan ? '#EF4444' : '#475569');
+            });
+
+            // Legend
+            const legend = document.getElementById('graph-legend');
+            legend.style.display = dirs.length > 0 ? 'block' : 'none';
+            legend.innerHTML = dirs.map(d => `
+                <div class="graph-legend-item">
+                    <div class="graph-legend-dot" style="background:${dirColorMap[d]}"></div>
+                    <span>${d.split('/').pop() || d}</span>
+                </div>
+            `).join('');
+        }
+
+        function filterGraph() {
+            if (!cyInstance || !graphData) return;
+            const dirVal = document.getElementById('graph-dir-filter').value;
+            const tagVal = document.getElementById('graph-tag-filter').value;
+
+            cyInstance.nodes().forEach(node => {
+                let show = true;
+                if (dirVal && node.data('sourceDir') !== dirVal) show = false;
+                if (tagVal && !(node.data('tags') || []).includes(tagVal)) show = false;
+                if (show) node.show(); else node.hide();
+            });
+
+            cyInstance.edges().forEach(edge => {
+                const src = edge.source();
+                const tgt = edge.target();
+                if (src.visible() && tgt.visible()) edge.show(); else edge.hide();
+            });
+        }
+
+        // === Command Palette ===
+        const staticCommands = [
+            { id: 'nav-map', label: 'Navigate to Map', icon: '&#11042;', hint: 'Alt+1', action: () => switchView('map'), category: 'Navigation' },
+            { id: 'nav-instances', label: 'Navigate to Instances', icon: '&#9673;', hint: 'Alt+2', action: () => switchView('instances'), category: 'Navigation' },
+            { id: 'nav-messages', label: 'Navigate to Messages', icon: '&#9993;', hint: 'Alt+3', action: () => switchView('messages'), category: 'Navigation' },
+            { id: 'nav-facts', label: 'Navigate to Facts', icon: '&#9733;', hint: 'Alt+4', action: () => switchView('facts'), category: 'Navigation' },
+            { id: 'nav-analytics', label: 'Navigate to Analytics', icon: '&#9636;', hint: 'Alt+5', action: () => switchView('analytics'), category: 'Navigation' },
+            { id: 'nav-graph', label: 'Navigate to Graph', icon: '&#9694;', hint: 'Alt+6', action: () => switchView('graph'), category: 'Navigation' },
+            { id: 'action-refresh', label: 'Refresh Data', icon: '&#8635;', hint: 'R', action: () => fetchData(), category: 'Actions' },
+            { id: 'action-new-fact', label: 'Create New Fact', icon: '+', action: () => { switchView('facts'); setTimeout(showCreateFactModal, 100); }, category: 'Actions' },
+            { id: 'action-new-session', label: 'Launch New Session', icon: '&#9654;', action: () => showLaunchModal(), category: 'Actions' },
+            { id: 'action-toggle-theme', label: 'Toggle Theme', icon: '&#9788;', action: () => toggleThemeSetting(), category: 'Actions' },
+            { id: 'action-settings', label: 'Open Settings', icon: '&#9881;', action: () => openSettings(), category: 'Actions' }
+        ];
+
+        function fuzzyMatch(query, text) {
+            const q = query.toLowerCase();
+            const t = text.toLowerCase();
+            // Exact substring match
+            if (t.includes(q)) return 100 + (q.length / t.length) * 50;
+            // All chars must match in order
+            let qi = 0, score = 0, consecutive = 0;
+            for (let ti = 0; ti < t.length && qi < q.length; ti++) {
+                if (t[ti] === q[qi]) {
+                    qi++;
+                    consecutive++;
+                    score += consecutive * 2;
+                    if (ti === qi - 1) score += 5; // prefix bonus
+                } else {
+                    consecutive = 0;
+                }
+            }
+            return qi === q.length ? score : 0;
+        }
+
+        function togglePalette() {
+            if (paletteOpen) closePalette(); else openPalette();
+        }
+
+        function openPalette() {
+            paletteOpen = true;
+            paletteSelectedIndex = 0;
+            document.getElementById('palette-overlay').classList.add('active');
+            const input = document.getElementById('palette-input');
+            input.value = '';
+            input.focus();
+            renderPaletteResults('');
+        }
+
+        function closePalette() {
+            paletteOpen = false;
+            document.getElementById('palette-overlay').classList.remove('active');
+        }
+
+        function renderPaletteResults(query) {
+            const results = document.getElementById('palette-results');
+            let items = [];
+
+            if (!query) {
+                // Show recent + all static commands
+                if (recentCommands.length > 0) {
+                    const recentItems = recentCommands
+                        .map(id => staticCommands.find(c => c.id === id))
+                        .filter(Boolean)
+                        .map(c => ({ ...c, category: 'Recent' }));
+                    items.push(...recentItems);
+                }
+                items.push(...staticCommands);
+            } else {
+                // Search static commands
+                const cmdResults = staticCommands
+                    .map(c => ({ ...c, score: fuzzyMatch(query, c.label) }))
+                    .filter(c => c.score > 0)
+                    .sort((a, b) => b.score - a.score);
+
+                // Search facts
+                const factResults = (allData.facts || [])
+                    .map(f => ({ id: 'fact-' + f.id, label: f.preview || f.content, icon: '&#9733;', hint: '', category: 'Facts', score: fuzzyMatch(query, f.content), action: () => showFactDetails(f.id) }))
+                    .filter(f => f.score > 0)
+                    .sort((a, b) => b.score - a.score)
+                    .slice(0, 5);
+
+                // Search instances
+                const instResults = (allData.instances || [])
+                    .map(inst => ({ id: 'inst-' + inst.id, label: `${inst.projectName} (${inst.shortDir})`, icon: '&#9673;', hint: '', category: 'Instances', score: Math.max(fuzzyMatch(query, inst.projectName), fuzzyMatch(query, inst.directory), fuzzyMatch(query, inst.id)), action: () => showInstanceDetails(inst) }))
+                    .filter(i => i.score > 0)
+                    .sort((a, b) => b.score - a.score)
+                    .slice(0, 5);
+
+                // Search messages
+                const msgResults = (allData.messages || [])
+                    .map(m => ({ id: 'msg-' + m.id, label: m.preview || m.content, icon: '&#9993;', hint: '', category: 'Messages', score: fuzzyMatch(query, m.content), action: () => showMessageDetails(m) }))
+                    .filter(m => m.score > 0)
+                    .sort((a, b) => b.score - a.score)
+                    .slice(0, 5);
+
+                items = [...cmdResults, ...factResults, ...instResults, ...msgResults];
+            }
+
+            paletteItems = items;
+            if (paletteSelectedIndex >= items.length) paletteSelectedIndex = Math.max(0, items.length - 1);
+
+            // Group by category
+            const groups = {};
+            items.forEach(item => {
+                const cat = item.category || 'Other';
+                if (!groups[cat]) groups[cat] = [];
+                groups[cat].push(item);
+            });
+
+            let html = '';
+            let globalIdx = 0;
+            for (const [cat, catItems] of Object.entries(groups)) {
+                html += `<div class="palette-section">${escapeHtml(cat)}</div>`;
+                for (const item of catItems) {
+                    const selected = globalIdx === paletteSelectedIndex ? ' selected' : '';
+                    html += `<div class="palette-item${selected}" data-idx="${globalIdx}">
+                        <span class="palette-item-icon">${item.icon}</span>
+                        <span class="palette-item-label">${escapeHtml(item.label)}</span>
+                        ${item.hint ? `<span class="palette-item-hint">${escapeHtml(item.hint)}</span>` : ''}
+                    </div>`;
+                    globalIdx++;
+                }
+            }
+
+            if (items.length === 0) {
+                html = '<div style="padding:1rem;text-align:center;color:var(--muted);">No results found</div>';
+            }
+
+            results.innerHTML = html;
+        }
+
+        function executePaletteItem(idx) {
+            const item = paletteItems[idx];
+            if (!item) return;
+            // Track recent for static commands
+            if (item.id && !item.id.startsWith('fact-') && !item.id.startsWith('inst-') && !item.id.startsWith('msg-')) {
+                recentCommands = [item.id, ...recentCommands.filter(id => id !== item.id)].slice(0, 5);
+                localStorage.setItem('openclawder-recent-commands', JSON.stringify(recentCommands));
+            }
+            closePalette();
+            if (item.action) item.action();
+        }
+
+        // Palette input handler
+        document.getElementById('palette-input').addEventListener('input', (e) => {
+            paletteSelectedIndex = 0;
+            renderPaletteResults(e.target.value);
+        });
+
+        document.getElementById('palette-input').addEventListener('keydown', (e) => {
+            e.stopPropagation();
+            if (e.key === 'ArrowDown') {
+                e.preventDefault();
+                paletteSelectedIndex = Math.min(paletteSelectedIndex + 1, paletteItems.length - 1);
+                renderPaletteResults(document.getElementById('palette-input').value);
+                const sel = document.querySelector('.palette-item.selected');
+                if (sel) sel.scrollIntoView({ block: 'nearest' });
+            } else if (e.key === 'ArrowUp') {
+                e.preventDefault();
+                paletteSelectedIndex = Math.max(paletteSelectedIndex - 1, 0);
+                renderPaletteResults(document.getElementById('palette-input').value);
+                const sel = document.querySelector('.palette-item.selected');
+                if (sel) sel.scrollIntoView({ block: 'nearest' });
+            } else if (e.key === 'Enter') {
+                e.preventDefault();
+                executePaletteItem(paletteSelectedIndex);
+            } else if (e.key === 'Escape') {
+                e.preventDefault();
+                closePalette();
+            }
+        });
+
+        // Palette click handlers
+        document.getElementById('palette-overlay').addEventListener('click', (e) => {
+            if (e.target.id === 'palette-overlay') closePalette();
+        });
+
+        document.getElementById('palette-results').addEventListener('click', (e) => {
+            const item = e.target.closest('.palette-item');
+            if (item) executePaletteItem(parseInt(item.dataset.idx));
+        });
+
+        // Settings overlay click to close
+        document.getElementById('settings-overlay').addEventListener('click', (e) => {
+            if (e.target.id === 'settings-overlay') closeSettings();
+        });
+
+        // Apply saved settings on load
+        applySettings();
+
+        // Use default view from settings
+        (function() {
+            const s = loadSettings();
+            if (s.defaultView && s.defaultView !== 'map') {
+                switchView(s.defaultView);
+            }
+        })();
+
+        // Initial fetch and start polling
+        fetchData();
+        startPolling();
+    </script>
+</body>
+</html>

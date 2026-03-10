@@ -1,0 +1,10 @@
+{
+  "mcpServers": {
+    "openclawder": {
+      "command": "/Users/maor/.local/bin/openclawder",
+      "args": [
+        "serve"
+      ]
+    }
+  }
+}
