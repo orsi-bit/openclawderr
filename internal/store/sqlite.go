@@ -40,7 +40,7 @@ func NewSQLiteStore(dataDir string) (*SQLiteStore, error) {
 		return nil, fmt.Errorf("failed to create data directory: %w", err)
 	}
 
-	dbPath := filepath.Join(dataDir, "clauder.db")
+	dbPath := filepath.Join(dataDir, "openclawder.db")
 	debugLog("[NewSQLiteStore] Opening database: %s", dbPath)
 	db, err := sql.Open("sqlite", dbPath+"?_journal_mode=WAL&_busy_timeout=5000")
 	if err != nil {

@@ -14,7 +14,7 @@ import (
 )
 
 const (
-	// Version is the current version of clauder
+	// Version is the current version of openclawder
 	Version = "0.9.2"
 
 	// GitHubOwner is the GitHub repository owner

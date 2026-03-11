@@ -130,7 +130,7 @@ Opens `http://localhost:8765` — live view of all instances, message history, a
 
 ## Data
 
-All data stored locally in `~/.clauder/` (SQLite). No cloud sync.
+All data stored locally in `~/.openclawder/` (SQLite). No cloud sync.
 
 To opt out of anonymous usage telemetry:
 ```bash

@@ -260,7 +260,7 @@ func (s *Server) handleToolsList(req *Request) {
 		},
 		{
 			Name:        "get_global_context",
-			Description: "Get all stored facts across ALL directories/repositories. Use this when you need context from other projects or want a complete view of everything stored in clauder, regardless of the current working directory.",
+			Description: "Get all stored facts across ALL directories/repositories. Use this when you need context from other projects or want a complete view of everything stored in openclawder, regardless of the current working directory.",
 			InputSchema: InputSchema{
 				Type:       "object",
 				Properties: map[string]Property{},
@@ -268,7 +268,7 @@ func (s *Server) handleToolsList(req *Request) {
 		},
 		{
 			Name:        "list_instances",
-			Description: "List all running clauder instances across different directories. Use this to discover other Claude Code sessions you can communicate with.",
+			Description: "List all running openclawder instances across different directories. Use this to discover other Claude Code sessions you can communicate with.",
 			InputSchema: InputSchema{
 				Type:       "object",
 				Properties: map[string]Property{},
@@ -276,7 +276,7 @@ func (s *Server) handleToolsList(req *Request) {
 		},
 		{
 			Name:        "send_message",
-			Description: "Send a message to another running clauder instance. Use a full instance ID (with :name suffix) to target a specific instance, or use a directory ID (without suffix) to broadcast to all instances in that directory.",
+			Description: "Send a message to another running openclawder instance. Use a full instance ID (with :name suffix) to target a specific instance, or use a directory ID (without suffix) to broadcast to all instances in that directory.",
 			InputSchema: InputSchema{
 				Type: "object",
 				Properties: map[string]Property{
@@ -298,7 +298,7 @@ func (s *Server) handleToolsList(req *Request) {
 		},
 		{
 			Name:        "get_messages",
-			Description: "Get messages sent to this instance from other clauder instances.",
+			Description: "Get messages sent to this instance from other openclawder instances.",
 			InputSchema: InputSchema{
 				Type: "object",
 				Properties: map[string]Property{

@@ -75,7 +75,7 @@ type ClaudeConfig struct {
 }
 
 func runSetup(cmd *cobra.Command, args []string) error {
-	// Find the clauder binary path
+	// Find the openclawder binary path
 	binaryPath, err := getBinaryPath()
 	if err != nil {
 		return fmt.Errorf("failed to find openclawder binary: %w", err)
@@ -184,7 +184,7 @@ func setupGlobalConfig(binaryPath string) error {
 		mcpServers = make(map[string]interface{})
 	}
 
-	// Add clauder
+	// Add openclawder
 	mcpServers["openclawder"] = map[string]interface{}{
 		"command": binaryPath,
 		"args":    []string{"serve"},
@@ -238,7 +238,7 @@ func setupProjectConfig(binaryPath string) error {
 		return fmt.Errorf("failed to read config: %w", err)
 	}
 
-	// Add clauder
+	// Add openclawder
 	config.McpServers["openclawder"] = MCPServer{
 		Command: binaryPath,
 		Args:    []string{"serve"},
@@ -286,7 +286,7 @@ func setupOpencodeConfig(binaryPath string) error {
 		mcp = make(map[string]interface{})
 	}
 
-	// Add clauder with OpenCode's format
+	// Add openclawder with OpenCode's format
 	mcp["openclawder"] = map[string]interface{}{
 		"type":    "local",
 		"command": []string{binaryPath, "serve"},
@@ -342,7 +342,7 @@ func setupCodexConfig(binaryPath string) error {
 		mcpServers = make(map[string]interface{})
 	}
 
-	// Add clauder with Codex's format
+	// Add openclawder with Codex's format
 	mcpServers["openclawder"] = map[string]interface{}{
 		"command": binaryPath,
 		"args":    []string{"serve"},
@@ -397,7 +397,7 @@ func setupGeminiConfig(binaryPath string) error {
 		mcpServers = make(map[string]interface{})
 	}
 
-	// Add clauder with Gemini CLI's format
+	// Add openclawder with Gemini CLI's format
 	mcpServers["openclawder"] = map[string]interface{}{
 		"command": binaryPath,
 		"args":    []string{"serve"},
@@ -451,7 +451,7 @@ func setupCursorConfig(binaryPath string) error {
 		return fmt.Errorf("failed to read config: %w", err)
 	}
 
-	// Add clauder
+	// Add openclawder
 	config.McpServers["openclawder"] = MCPServer{
 		Command: binaryPath,
 		Args:    []string{"serve"},
@@ -504,7 +504,7 @@ func setupWindsurfConfig(binaryPath string) error {
 		return fmt.Errorf("failed to read config: %w", err)
 	}
 
-	// Add clauder
+	// Add openclawder
 	config.McpServers["openclawder"] = MCPServer{
 		Command: binaryPath,
 		Args:    []string{"serve"},
@@ -864,7 +864,7 @@ func addGetContextPermission(config map[string]interface{}) {
 	config["permissions"] = permissions
 }
 
-// addPermissionRules adds MCP tool permissions to allow clauder commands without prompts
+// addPermissionRules adds MCP tool permissions to allow openclawder commands without prompts
 func addPermissionRules(config map[string]interface{}) {
 	// Get or create permissions array
 	permissions, ok := config["permissions"].([]interface{})
@@ -932,7 +932,7 @@ This context may or may not be relevant to your tasks. You should not respond to
 	data, err := os.ReadFile(claudeMDPath)
 	if err == nil {
 		content = string(data)
-		// Check if clauder section already exists
+		// Check if openclawder section already exists
 		if strings.Contains(content, "## OpenClawder - Persistent Memory MCP") {
 			fmt.Println("CLAUDE.md already contains openclawder instructions.")
 			return nil

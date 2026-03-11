@@ -145,7 +145,7 @@ func generateAnonID() string {
 	home, _ := os.UserHomeDir()
 	hostname, _ := os.Hostname()
 
-	data := home + hostname + "clauder-salt-v1"
+	data := home + hostname + "openclawder-salt-v1"
 	hash := sha256.Sum256([]byte(data))
 	return hex.EncodeToString(hash[:16])
 }

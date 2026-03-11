@@ -4,7 +4,9 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
+	"io"
 	"os"
+	"path/filepath"
 
 	"github.com/orsi-bit/openclawder/internal/telemetry"
 	"github.com/spf13/cobra"
@@ -57,7 +59,77 @@ func getDataDir() string {
 		fmt.Fprintf(os.Stderr, "error getting home directory: %v\n", err)
 		os.Exit(1)
 	}
-	return home + "/.clauder"
+	newDir := home + "/.openclawder"
+	oldDir := home + "/.clauder"
+
+	// Migration: if old clauder dir exists and new openclawder dir doesn't, migrate.
+	oldInfo, oldErr := os.Stat(oldDir)
+	_, newErr := os.Stat(newDir)
+
+	if oldErr == nil && oldInfo.IsDir() && os.IsNotExist(newErr) {
+		// Migrate: copy old dir to new dir atomically via temp dir
+		fmt.Fprintf(os.Stderr, "[openclawder] Migrating data from %s to %s ...\n", oldDir, newDir)
+		tmpDir := newDir + ".tmp"
+		_ = os.RemoveAll(tmpDir) // clean up any prior failed attempt
+		if copyErr := copyDir(oldDir, tmpDir); copyErr != nil {
+			fmt.Fprintf(os.Stderr, "[openclawder] Migration failed (will use new empty dir): %v\n", copyErr)
+			_ = os.RemoveAll(tmpDir)
+		} else if renameErr := os.Rename(tmpDir, newDir); renameErr != nil {
+			fmt.Fprintf(os.Stderr, "[openclawder] Migration rename failed: %v\n", renameErr)
+			_ = os.RemoveAll(tmpDir)
+		} else {
+			// Rename clauder.db → openclawder.db inside the new directory so data is preserved.
+			oldDB := filepath.Join(newDir, "clauder.db")
+			newDB := filepath.Join(newDir, "openclawder.db")
+			if _, statErr := os.Stat(oldDB); statErr == nil {
+				if _, statErr2 := os.Stat(newDB); os.IsNotExist(statErr2) {
+					if dbRenameErr := os.Rename(oldDB, newDB); dbRenameErr != nil {
+						fmt.Fprintf(os.Stderr, "[openclawder] DB rename failed (data may need manual migration): %v\n", dbRenameErr)
+					}
+				}
+			}
+			fmt.Fprintf(os.Stderr, "[openclawder] Migration complete. Original data preserved at %s\n", oldDir)
+		}
+	} else if oldErr == nil && oldInfo.IsDir() && newErr == nil {
+		// Both exist — use new dir, warn about conflict.
+		fmt.Fprintf(os.Stderr, "[openclawder] Note: legacy %s still exists alongside %s. Using %s. Remove the legacy directory when satisfied.\n", oldDir, newDir, newDir)
+	}
+
+	return newDir
+}
+
+// copyDir recursively copies src directory to dst.
+func copyDir(src, dst string) error {
+	return filepath.Walk(src, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+		rel, err := filepath.Rel(src, path)
+		if err != nil {
+			return err
+		}
+		target := filepath.Join(dst, rel)
+		if info.IsDir() {
+			return os.MkdirAll(target, info.Mode())
+		}
+		return copyFile(path, target, info.Mode())
+	})
+}
+
+// copyFile copies a single file from src to dst with the given mode.
+func copyFile(src, dst string, mode os.FileMode) error {
+	in, err := os.Open(src)
+	if err != nil {
+		return err
+	}
+	defer in.Close()
+	out, err := os.OpenFile(dst, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, mode)
+	if err != nil {
+		return err
+	}
+	defer out.Close()
+	_, err = io.Copy(out, in)
+	return err
 }
 
 // generateDirectoryID creates a stable directory ID based on path
